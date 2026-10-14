@@ -50,6 +50,16 @@ cp -a web /root/outbounder-deploy/web
 cp -a deploy /root/outbounder-deploy/deploy 2>/dev/null || true
 cp -a ./*.py /root/outbounder-deploy/ 2>/dev/null || true
 
+# The Windows checkout uses core.autocrlf, so shell scripts can arrive with CRLF
+# endings. A CRLF shebang makes them unrunnable, which silently broke the nightly
+# backup once already. Normalize before anything executes them.
+if [ -x /usr/local/bin/outbounder-fix-eol ]; then
+  /usr/local/bin/outbounder-fix-eol
+else
+  sed -i 's/\r$//' /root/outbounder-deploy/deploy/*.sh
+  echo "normalized deploy scripts"
+fi
+
 # bootstrap now preserves an existing database and .env.
 SRC_DIR=/root/outbounder-deploy bash /root/outbounder-deploy/deploy/bootstrap.sh > /tmp/update.log 2>&1
 grep -E 'Existing database|Database seeded|Compiled successfully' /tmp/update.log | tail -3
