@@ -18,7 +18,7 @@ await new Promise((resolve, reject) => {
 const fixture = spawn(process.execPath, ["scripts/qc-fixture.mjs"], { stdio: "inherit", env });
 let fixtureExited = false;
 fixture.once("exit", () => { fixtureExited = true; });
-const suites = ["panel-quality-ui.mjs", "email-quality-ui.mjs", "secondary-quality-ui.mjs", "primary-quality-ui.mjs", "expanded-page-walkthrough.mjs", "interactive-chart-ui.mjs", "ui-state-qa.mjs"];
+const suites = ["panel-quality-ui.mjs", "email-quality-ui.mjs", "secondary-quality-ui.mjs", "primary-quality-ui.mjs", "expanded-page-walkthrough.mjs", "interactive-chart-ui.mjs", "long-call-script-ui.mjs", "ui-state-qa.mjs"];
 try {
   for (let attempt = 0; ; attempt++) {
     if (fixtureExited) throw new Error("Isolated QA service exited before startup");

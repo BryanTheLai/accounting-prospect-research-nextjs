@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import { test } from "node:test";
 import {
+  CALL_DISPOSITIONS,
+  CallInputError,
+  getCallDashboard,
+  parseCallInput,
+  saveCallOutcome,
+} from "../lib/calls.ts";
+import {
   ContactInputError,
   parseContactUpdate,
   updateProspectContact,
@@ -73,6 +80,72 @@ test("contact edits can update buyer, title and phone without clearing a matchin
     assert.equal(result.contact.buyer, "Ada Li");
     assert.equal(result.contact.title, "Co-founder");
     assert.equal(result.contact.phone, "+14155550999");
+  } finally {
+    db.close();
+  }
+});
+
+test("call input preserves notes, stores UTC follow-up time, and rejects unsafe bounds", () => {
+  assert.deepEqual(parseCallInput({
+    leadId: "yc_alpha", disposition: "CONNECTED_CALLBACK", notes: "  Call after demo  ",
+    nextFollowupAt: "2026-10-05T09:30:00-07:00", durationSeconds: 82,
+  }), {
+    leadId: "yc_alpha", disposition: "CONNECTED_CALLBACK", notes: "Call after demo",
+    nextFollowupAt: "2026-10-05T16:30:00.000Z", durationSeconds: 82,
+  });
+  assert.throws(() => parseCallInput({ leadId: "yc_alpha", disposition: "UNKNOWN" }), CallInputError);
+  assert.throws(() => parseCallInput({ leadId: "yc_alpha", disposition: "BUSY", durationSeconds: 3601 }), CallInputError);
+  assert.throws(() => parseCallInput({ leadId: "yc_alpha", disposition: "BUSY", notes: "x".repeat(1001) }), CallInputError);
+  assert.equal(CALL_DISPOSITIONS.length, 10);
+  assert.ok(CALL_DISPOSITIONS.some((item) => item.code === "CONNECTED_WRONG_PERSON"));
+  assert.ok(CALL_DISPOSITIONS.some((item) => item.code === "GATEKEEPER_BLOCKED"));
+  assert.ok(CALL_DISPOSITIONS.some((item) => item.code === "GATEKEEPER_TRANSFERRED"));
+});
+
+test("call logging is durable, updates aggregate lead status, and dashboard metrics/history are campaign-scoped", () => {
+  const db = fixture();
+  try {
+    const now = new Date("2026-10-04T12:00:00.000Z");
+    const callbackId = saveCallOutcome(db, parseCallInput({
+      leadId: "yc_alpha", disposition: "CONNECTED_CALLBACK", notes: "After product demo",
+      nextFollowupAt: "2026-10-06T16:00:00.000Z", durationSeconds: 95,
+    }), now);
+    const wrongPersonId = saveCallOutcome(db, parseCallInput({
+      leadId: "yc_beta", disposition: "CONNECTED_WRONG_PERSON", notes: "Founder left company",
+    }), new Date("2026-10-04T13:00:00.000Z"));
+    saveCallOutcome(db, parseCallInput({ leadId: "sg_gamma", disposition: "GATEKEEPER_BLOCKED" }), now);
+    assert.ok(callbackId > 0);
+    assert.ok(wrongPersonId > callbackId);
+
+    const lead = db.prepare("SELECT status, call_attempts_count, last_disposition FROM prospects WHERE lead_id = 'yc_alpha'").get();
+    assert.deepEqual(lead, { status: "Nurture / Follow-up", call_attempts_count: 1, last_disposition: "CONNECTED_CALLBACK" });
+    const stats = getCallDashboard(db, "yc_us_expansion", now);
+    assert.deepEqual(stats.metrics, {
+      dialsToday: 2, connectsToday: 2, meetingsBookedToday: 0, gatekeeperBlocks: 0,
+      connectRatePct: 100, meetingConversionPct: 0,
+    });
+    assert.equal(stats.recentCalls.length, 2);
+    assert.equal(stats.recentCalls[0].disposition, "CONNECTED_WRONG_PERSON");
+    assert.equal(stats.recentCalls[1].notes, "After product demo");
+    assert.equal(stats.recentCalls[1].nextFollowupAt, "2026-10-06T16:00:00.000Z");
+
+    const allCampaigns = getCallDashboard(db, "all", now);
+    assert.equal(allCampaigns.metrics.dialsToday, 3);
+    assert.equal(allCampaigns.metrics.gatekeeperBlocks, 1);
+    assert.equal(getCallDashboard(db, "yc_us_expansion", new Date("2026-10-05T12:00:00Z")).metrics.dialsToday, 0);
+  } finally {
+    db.close();
+  }
+});
+
+test("call outcome and prospect status changes roll back together if the lead update fails", () => {
+  const db = fixture();
+  try {
+    db.exec(`CREATE TRIGGER reject_lead_call_update BEFORE UPDATE ON prospects
+      BEGIN SELECT RAISE(ABORT, 'lead update blocked'); END`);
+    assert.throws(() => saveCallOutcome(db, parseCallInput({ leadId: "yc_alpha", disposition: "CONNECTED_MEETING_BOOKED" }), new Date("2026-10-04T12:00:00Z")), /lead update blocked/);
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM call_logs").get().count, 0);
+    assert.equal(db.prepare("SELECT status FROM prospects WHERE lead_id = 'yc_alpha'").get().status, "Ready to Review");
   } finally {
     db.close();
   }
