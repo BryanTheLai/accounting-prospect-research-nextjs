@@ -10,11 +10,10 @@ page.on('response',response=>{if(new URL(response.url()).pathname.startsWith('/a
 try {
   for(const width of [1440,768,375,320]){
     await page.setViewportSize({width,height:900});
-    for(const path of ['/#campaigns','/#prospects','/#dialer','/#settings','/activity','/mailboxes','/playbooks','/yc','/import']){
+    for(const path of ['/#campaigns','/#prospects','/#settings','/activity','/mailboxes','/playbooks','/yc','/import']){
       await page.goto(`http://127.0.0.1:3000${path}`);
       if(path==='/#campaigns')await page.locator('.dispatch-candidate').first().waitFor();
       else if(path==='/#prospects')await page.locator('.prospect-row').first().waitFor();
-      else if(path==='/#dialer')await page.locator('.call-card').waitFor();
       else if(path==='/activity')await page.getByRole('img',{name:'Daily email activity line chart'}).waitFor();
       else if(path==='/mailboxes')await page.getByRole('button',{name:'Refresh mailboxes',exact:true}).waitFor();
       else if(path==='/playbooks')await page.locator('input').first().waitFor();

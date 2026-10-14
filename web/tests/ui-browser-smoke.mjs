@@ -4,7 +4,7 @@
 export async function runUiSmoke(tab, browser, write) {
   const current = new URL(await tab.url());
   if (current.hostname !== '127.0.0.1' || current.port !== '3001') throw Error('Fixture service only');
-  const routes = ['/#campaigns', '/#prospects', '/#dialer', '/#settings', '/mailboxes', '/email-preflight', '/import', '/playbooks', '/activity', '/yc'];
+  const routes = ['/#campaigns', '/#prospects', '/#settings', '/mailboxes', '/email-preflight', '/import', '/playbooks', '/activity', '/yc'];
   const viewport = await browser.capabilities.get('viewport');
   const results = [];
   try {

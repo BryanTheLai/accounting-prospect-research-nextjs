@@ -1,22 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
-import { CALL_DISPOSITIONS } from "@/lib/calls";
-import type { CallDashboard } from "@/lib/calls";
 import { useDialogFocus } from "@/app/ui/useDialogFocus";
-import { CallScript } from "@/app/ui/CallScript";
-import { coreCallScript } from "@/lib/core-call-script.mjs";
 import CampaignEmailPreview from "@/app/ui/CampaignEmailPreview";
-import { stageLabel, primaryStages, primaryCallCodes, pageFromHash, startBlockReason } from "@/lib/workflow-ui.mjs";
+import { stageLabel, primaryStages, pageFromHash, startBlockReason } from "@/lib/workflow-ui.mjs";
 import { selectDispatchCandidateIds } from "@/lib/dispatch-selection";
 import { dispatchStatusLabel } from "@/lib/dispatch-status.mjs";
 import DnsDeliverabilityTools from "@/app/ui/DnsDeliverabilityTools";
 import { Disclosure } from "@/app/ui/Disclosure";
-import { prospectTimezone } from "@/lib/prospect-timezone.mjs";
 
-type Page = "prospects" | "dialer" | "campaigns" | "settings";
-type CallQueueCategory = "callable" | "all_active";
+type Page = "prospects" | "campaigns" | "settings";
 type Prospect = {
   id: string; company: string; location: string | null; sector: string | null;
   status: string | null; fit: number | null; campaignId: string | null;
@@ -25,8 +18,7 @@ type Prospect = {
   signal: string | null; source?: string | null; summary?: string | null;
   rootDomain?: string | null;
   buyer?: string | null; title?: string | null; email?: string | null;
-  phone?: string | null; phoneScript?: string | null; accountingSoftware?: string | null;
-  facility?: string | null;
+  phone?: string | null;
 };
 type Campaign = { id: string; name: string; tagline: string | null; audience: string | null; status: string; draft: boolean; prospects: number; createdAt: string; scheduleTimezone: string; scheduleStartMinute: number; scheduleEndMinute: number };
 type StatusCount = { status: string; count: number };
@@ -89,18 +81,6 @@ function timeToMinute(value: string) {
   return hour < 24 && minute < 60 ? hour * 60 + minute : null;
 }
 
-function callQueueParams(category: CallQueueCategory, campaignId: string, status: string, query: string, limit: number, offset: number, scriptStyle: string) {
-  return new URLSearchParams({
-    category,
-    scriptStyle,
-    campaignId,
-    status,
-    q: query,
-    limit: String(limit),
-    offset: String(offset),
-  });
-}
-
 function timezoneLabel(timezone: string) {
   const labels: Record<string, string> = {
     "America/Los_Angeles": "California · Pacific Time",
@@ -112,17 +92,6 @@ function timezoneLabel(timezone: string) {
     "Asia/Kuala_Lumpur": "Malaysia",
   };
   return labels[timezone] || timezone;
-}
-
-function normalizedPhone(phone: string, campaignId: string | null) {
-  const clean = phone.trim().replace(/[^\d+]/g, "");
-  if (!clean || clean.startsWith("+")) return clean;
-  if (campaignId?.toLowerCase().includes("yc")) {
-    if (clean.length === 10) return `+1${clean}`;
-    if (clean.length === 11 && clean.startsWith("1")) return `+${clean}`;
-  } else if (clean.startsWith("0")) return `+60${clean.slice(1)}`;
-  else if (clean.startsWith("60")) return `+${clean}`;
-  return `+${clean}`;
 }
 
 export default function Desk() {
@@ -154,31 +123,8 @@ export default function Desk() {
   const [confirmLiveStart, setConfirmLiveStart] = useState(false);
   const [confirmScheduleOverride, setConfirmScheduleOverride] = useState(false);
   const [confirmLiveMode, setConfirmLiveMode] = useState<boolean | null>(null);
-  const [callRows, setCallRows] = useState<Prospect[]>([]);
-  const [callIndex, setCallIndex] = useState(0);
-  const [callTotal, setCallTotal] = useState(0);
-  const [callHasMore, setCallHasMore] = useState(false);
-  const [callLoadingMore, setCallLoadingMore] = useState(false);
-  const [callLoading, setCallLoading] = useState(false);
-  const [callError, setCallError] = useState("");
-  const [callRetry, setCallRetry] = useState(0);
   const [detailError, setDetailError] = useState("");
   const [detailRetry, setDetailRetry] = useState(0);
-  const [callCategory, setCallCategory] = useState<CallQueueCategory>("callable");
-  const callScriptStyle = "original";
-  const callStage = "all";
-  const [callSearch, setCallSearch] = useState("");
-  const [callNotes, setCallNotes] = useState("");
-  const [callFollowup, setCallFollowup] = useState("");
-  const [callDuration, setCallDuration] = useState("0");
-  const [callSaving, setCallSaving] = useState(false);
-  const callNavigation = useRef({ page, saving: false, dirty: false });
-  callNavigation.current = { page, saving: callSaving, dirty: Boolean(callNotes.trim() || callFollowup || Number(callDuration)) };
-  const [callDashboard, setCallDashboard] = useState<CallDashboard | null>(null);
-  const [callMetricsError, setCallMetricsError] = useState("");
-  const [callMetricsRetry, setCallMetricsRetry] = useState(0);
-  const [contactDraft, setContactDraft] = useState({ buyer: "", title: "", email: "", phone: "" });
-  const [contactSaving, setContactSaving] = useState(false);
   const [stageSaving, setStageSaving] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [selected, setSelected] = useState<Prospect | null>(null);
@@ -219,8 +165,6 @@ export default function Desk() {
   const prospectView = useRef("");
   const prospectViewKey = JSON.stringify([campaignScope, query, stage, companyFilter, founderFilter, locationFilter, phoneFilter, minFit, maxFit, hiringOnly, callableOnly, emailTier, emailCheckStatus, selectedProspectTiers, excludeGovernment]);
   prospectView.current = prospectViewKey;
-  const callView = useRef("");
-  callView.current = JSON.stringify([campaignScope, callCategory, callSearch]);
   const dispatchScope = useRef(campaignScope);
   dispatchScope.current = campaignScope;
   const filterStages = [...new Set([...stageOptions, ...statuses.map((item) => item.status)])];
@@ -239,17 +183,6 @@ export default function Desk() {
     noticeTimer.current = setTimeout(() => setNotice(null), tone === "ok" ? 4500 : 9000);
   }, []);
 
-  function allowCallChange() {
-    const current = callNavigation.current;
-    if (current.page !== "dialer") return true;
-    if (current.saving) { notify("Wait for the call result to finish saving.", "error"); return false; }
-    if (current.dirty && !window.confirm("Discard this contact's unsaved call notes and follow-up?")) return false;
-    if (current.dirty) {
-      setCallNotes(""); setCallFollowup(""); setCallDuration("0");
-      callNavigation.current.dirty = false;
-    }
-    return true;
-  }
 
   const loadWorkspace = useCallback(async () => {
     const [campaignsResponse, settingsResponse] = await Promise.all([
@@ -350,42 +283,14 @@ export default function Desk() {
       setSelectedId(leadId); setDetailOpen(true);
       restoreDetailOnEntry.current = pageFromHash(window.location.hash) === "prospects";
     }
-    if (params.get("callScript") === "original") {
-    }
-    const syncPage = () => {
-      const next = pageFromHash(window.location.hash);
-      if (next !== callNavigation.current.page && !allowCallChange()) {
-        window.history.replaceState(null, "", `#${callNavigation.current.page}`);
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        return;
-      }
-      setPage(next);
-    };
-    const guardLink = (event: MouseEvent) => {
-      const link = event.target instanceof Element ? event.target.closest("a[href]") as HTMLAnchorElement | null : null;
-      if (!link || link.target === "_blank") return;
-      const url = new URL(link.href);
-      if (url.origin !== window.location.origin || url.hash === "#main-content") return;
-      if ((url.pathname !== window.location.pathname || pageFromHash(url.hash) !== callNavigation.current.page) && !allowCallChange()) {
-        event.preventDefault(); event.stopPropagation();
-      }
-    };
-    const guardClose = (event: BeforeUnloadEvent) => {
-      if (callNavigation.current.page === "dialer" && (callNavigation.current.dirty || callNavigation.current.saving)) {
-        event.preventDefault(); event.returnValue = "";
-      }
-    };
+    const syncPage = () => setPage(pageFromHash(window.location.hash));
     syncPage();
     if (!window.location.hash || window.location.hash === "#overview") window.history.replaceState(null, "", "#campaigns");
     window.addEventListener("popstate", syncPage);
     window.addEventListener("hashchange", syncPage);
-    document.addEventListener("click", guardLink, true);
-    window.addEventListener("beforeunload", guardClose);
     return () => {
       window.removeEventListener("popstate", syncPage);
       window.removeEventListener("hashchange", syncPage);
-      document.removeEventListener("click", guardLink, true);
-      window.removeEventListener("beforeunload", guardClose);
     };
   }, []);
 
@@ -476,77 +381,7 @@ export default function Desk() {
     return () => controller.abort();
   }, [selectedId, dbAvailable, detailRetry]);
 
-  useEffect(() => {
-    if (!dbAvailable || page !== "dialer") return;
-    let current = true;
-    setCallRows([]);
-    setCallIndex(0);
-    setCallTotal(0);
-    setCallHasMore(false);
-    setCallLoading(true);
-    setCallError("");
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => {
-      const params = callQueueParams(callCategory, campaignScope, callStage, callSearch, 100, 0, callScriptStyle);
-      fetch(`/api/call-queue?${params}`, { cache: "no-store", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) })
-        .then(async (response) => {
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "Could not load the call queue");
-          if (current) {
-            setCallRows(data.rows || []);
-            setCallTotal(Number(data.total) || 0);
-            setCallHasMore(Boolean(data.hasMore));
-          }
-        })
-        .catch((error) => { if (current) setCallError(error instanceof Error ? error.message : "Could not load the call queue"); })
-        .finally(() => { if (current) setCallLoading(false); });
-    }, callSearch ? 250 : 0);
-    return () => { current = false; controller.abort(); window.clearTimeout(timer); };
-  }, [dbAvailable, page, campaignScope, callCategory, callStage, callSearch, callScriptStyle, callRetry]);
-
-  useEffect(() => {
-    if (!dbAvailable || page !== "dialer") return;
-    let current = true;
-    const params = new URLSearchParams({ campaignId: campaignScope });
-    setCallDashboard(null);
-    setCallMetricsError("");
-    fetch(`/api/calls?${params}`, { cache: "no-store" })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Could not load call metrics");
-        if (current) setCallDashboard(data);
-      })
-      .catch((error) => { if (current) setCallMetricsError(error instanceof Error ? error.message : "Could not load call metrics"); });
-    return () => { current = false; };
-  }, [dbAvailable, page, campaignScope, callMetricsRetry]);
-
-  const currentCall = callRows[callIndex] || null;
-
-  useEffect(() => {
-    setCallNotes("");
-    setCallFollowup("");
-    setCallDuration("0");
-    if (page === "dialer" && currentCall) window.scrollTo({ top: 0, behavior: "instant" });
-  }, [currentCall?.id, page]);
-
-  useEffect(() => {
-    if (page === "dialer" && currentCall && selectedId !== currentCall.id) setSelectedId(currentCall.id);
-  }, [page, currentCall, selectedId]);
-
   const visibleCount = prospects.length;
-  const callLead = currentCall && selected?.id === currentCall.id ? selected : null;
-
-  useEffect(() => {
-    if (!callLead) return;
-    setContactDraft({ buyer: callLead.buyer || "", title: callLead.title || "", email: callLead.email || "", phone: callLead.phone || "" });
-  }, [callLead?.id, callLead?.buyer, callLead?.title, callLead?.email, callLead?.phone]);
-
-  const callPhone = callLead?.phone ? normalizedPhone(callLead.phone, callLead.campaignId) : "";
-  const callDigits = callPhone.replace(/\D/g, "");
-  const callZone = prospectTimezone(callLead?.location || null, callLead?.campaignId || null);
-  const callHour = Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, timeZone: callZone.name }).format(new Date()));
-  const greeting = callZone.reference ? "Good day" : callHour < 12 ? "Good morning" : callHour < 17 ? "Good afternoon" : "Good evening";
-  const callScript = coreCallScript(callLead, greeting);
 
   async function loadMore() {
     const view = prospectView.current;
@@ -567,73 +402,6 @@ export default function Desk() {
     finally { setLoadingMore(false); }
   }
 
-  async function loadMoreCalls() {
-    const view = callView.current;
-    setCallLoadingMore(true);
-    try {
-      const params = callQueueParams(callCategory, campaignScope, callStage, callSearch, 100, callRows.length, callScriptStyle);
-      const response = await fetch(`/api/call-queue?${params}`, { cache: "no-store" });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not load more contacts");
-      if (view !== callView.current) return;
-      setCallRows((rows) => [...rows, ...(data.rows || [])]);
-      setCallTotal(Number(data.total) || 0);
-      setCallHasMore(Boolean(data.hasMore));
-    } catch (error) { notify(error instanceof Error ? error.message : "Could not load more contacts", "error"); }
-    finally { setCallLoadingMore(false); }
-  }
-
-  async function logCallOutcome(disposition: string) {
-    if (!currentCall || callSaving) return;
-    setCallSaving(true);
-    try {
-      const response = await fetch("/api/calls", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          leadId: currentCall.id, disposition, notes: callNotes,
-          durationSeconds: Number(callDuration) || 0,
-          nextFollowupAt: callFollowup ? new Date(callFollowup).toISOString() : null,
-        }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Could not save call outcome");
-      setCallNotes("");
-      setCallFollowup("");
-      setCallDuration("0");
-      setCallIndex(callIndex + 1);
-      notify("Call outcome saved");
-      try {
-        const params = new URLSearchParams({ campaignId: campaignScope });
-        const dashboardResponse = await fetch(`/api/calls?${params}`, { cache: "no-store" });
-        if (campaignScope !== dispatchScope.current) return;
-        if (!dashboardResponse.ok) throw new Error("Metrics unavailable");
-        setCallDashboard(await dashboardResponse.json());
-        setCallMetricsError("");
-      } catch { if (campaignScope === dispatchScope.current) setCallMetricsError("Call outcome saved. Metrics and history could not be refreshed."); }
-    } catch (error) { notify(error instanceof Error ? error.message : "Could not save call outcome", "error"); }
-    finally { setCallSaving(false); }
-  }
-
-  async function saveCallContact(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!callLead || contactSaving) return;
-    setContactSaving(true);
-    try {
-      const response = await fetch("/api/contacts", {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: callLead.id, ...contactDraft }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Could not update contact");
-      setSelected((current) => current?.id === callLead.id ? { ...current, ...result.contact } : current);
-      if (result.emailPreflightInvalidated) {
-        notify("Contact saved. The changed email needs a new preflight check.");
-      } else {
-        notify("Contact details saved");
-      }
-    } catch (error) { notify(error instanceof Error ? error.message : "Could not update contact", "error"); }
-    finally { setContactSaving(false); }
-  }
 
   async function dispatchAction(body: Record<string, unknown>) {
     setDispatchBusy(true);
@@ -884,7 +652,7 @@ export default function Desk() {
   return (
     <div className="app-shell">
       <main id="main-content" className="main-area" tabIndex={-1}>
-        {(dbAvailable || loading) && <h1 className="sr-only">{page === "campaigns" ? "Email campaigns" : page === "dialer" ? "Call desk" : page === "settings" ? "Settings" : "Prospects"}</h1>}
+        {(dbAvailable || loading) && <h1 className="sr-only">{page === "campaigns" ? "Email campaigns" : page === "settings" ? "Settings" : "Prospects"}</h1>}
         {!dbAvailable && !loading ? <section className="page-content"><div className="error-panel"><span className="eyebrow">Local setup</span><h1>Couldn’t open your workspace.</h1><p>Check the database path in <code>OUTBOUNDER_DB_PATH</code>, then restart the app.</p><button className="button secondary" onClick={() => void refresh()}>Try again <Glyph name="arrow" /></button></div></section> : (
           <>
             {page === "prospects" && <section className="page-content" aria-label="Prospects">
@@ -915,64 +683,6 @@ export default function Desk() {
                 <ProspectList rows={prospects} selectedId={selectedId} onSelect={(row) => { setSelectedId(row.id); setDetailOpen(true); }} empty={loading ? "Loading your prospects…" : "No matches. Try another search or stage."} hasMore={hasMore} loadingMore={loadingMore} onMore={() => void loadMore()} />
                 <DetailPanel prospect={selected} campaignScope={campaignScope} loading={Boolean(selectedId && !selected && !detailError)} error={detailError} onRetry={() => setDetailRetry((value) => value + 1)} onStage={updateStage} saving={stageSaving} onClose={() => setDetailOpen(false)} mobileOpen={detailOpen} mobileLayout={mobileLayout} />
               </div>
-            </section>}
-
-            {page === "dialer" && <section className="page-content dialer-page" aria-label="Call desk">
-              <CampaignScopeSelect campaigns={campaigns} value={campaignScope} disabled={callSaving} onChange={(value) => { if (allowCallChange()) setCampaignScope(value); }} />
-              <div className="call-queue-controls"><div className="segmented-buttons" aria-label="Call audience">{([['callable', 'Callable leads'], ['all_active', 'All active targets']] as const).map(([value, label]) => <button key={value} className={`button ${callCategory === value ? 'primary' : 'secondary'}`} title={value === 'callable' ? 'Phone on file and fit score above 80' : 'All non-terminal prospects in this campaign'} aria-pressed={callCategory === value} disabled={callSaving} onClick={() => { if (allowCallChange()) setCallCategory(value); }}>{label}</button>)}</div><input aria-label="Search call queue" type="search" maxLength={120} value={callSearch} disabled={callSaving} onChange={(event) => { if (allowCallChange()) setCallSearch(event.target.value); }} placeholder="Search contacts" /></div>
-              <div className="call-queue-top" aria-live="polite"><span>{currentCall ? `Contact ${callIndex + 1} of ${callTotal}${callHasMore ? "+" : ""}` : callLoading || !dbAvailable ? "Finding contacts…" : callError ? "Call queue unavailable" : callRows.length ? "Loaded contacts completed" : "No contacts match these filters"}</span><span>{currentCall?.campaignId ? campaigns.find((item) => item.id === currentCall.campaignId)?.name || "Assigned campaign" : "All campaigns"}</span></div>
-              {currentCall && <div className="call-progress"><i style={{ width: `${callRows.length ? Math.min(100, ((callIndex + 1) / callRows.length) * 100) : 0}%` }} /></div>}
-              {!currentCall ? <div className="empty-state call-empty" role={callError ? "alert" : "status"}>{callError || (callLoading || !dbAvailable ? "Loading your call queue…" : callRows.length ? callHasMore ? "This page is complete. Continue with the next contacts." : "Queue complete. No more contacts in this view." : "No contacts match these filters. Try a different category, stage, or search.")}{callError && <button type="button" className="button secondary" onClick={() => setCallRetry((value) => value + 1)}>Retry call queue</button>}{!callError && callHasMore && <button className="button secondary" onClick={() => void loadMoreCalls()} disabled={callLoadingMore}>{callLoadingMore ? "Loading…" : "Load next contacts"}</button>}</div> : <div className="call-layout">
-                <article className="call-card">
-                  <div className="call-card-top"><span className="eyebrow">{String(callIndex + 1).padStart(2, "0")} <span className="eyebrow-sep">/</span> CALL SHEET</span><span className={`stage-badge ${stageTone(currentCall.status)}`}><i />{stageLabel(currentCall.status)}</span></div>
-                  <div className="call-identity"><span className="company-monogram">{currentCall.company.slice(0, 1).toUpperCase()}</span><div><h2>{currentCall.company}</h2><p>{[currentCall.location, currentCall.sector].filter(Boolean).join(" · ")}</p></div></div>
-                  <div className="call-contact"><strong>{callLead?.buyer || "Contact name not set"}</strong>{callLead?.title && <span>{callLead.title}</span>}{callLead?.phone && <a href={`tel:${callPhone}`}>{callLead.phone}</a>}</div>
-                  {callLead ? <div className="call-local-time" title={callZone.reference ? "The exact time zone is not recorded. This is a reference clock, not confirmed local time." : "Time for the recorded company location."}><span>{callZone.reference ? "REFERENCE TIME" : "LOCATION TIME"} · {callZone.label.toUpperCase()}</span><strong>{new Intl.DateTimeFormat("en-US", { timeZone: callZone.name, hour: "numeric", minute: "2-digit" }).format(new Date())}</strong></div> : <div className="call-loading-detail" role={detailError ? "alert" : "status"}>{detailError || "Loading call details…"}{detailError && <button type="button" className="button secondary" onClick={() => setDetailRetry((value) => value + 1)}>Retry contact</button>}</div>}
-                  {callLead && <>
-                    <div className="call-actions call-primary-actions" aria-label="Contact actions">
-                      {callPhone ? <><a className="button primary call-action" href={`tel:${callPhone}`}>Call now <span>{callLead.phone}</span></a><a className="button whatsapp-action" href={`https://wa.me/${callDigits}?text=${encodeURIComponent(`Hi ${callLead.buyer && !/^(?:founder|co-founder|ceo|chief executive|managing director|director|owner|manager|head|finance head)\b/i.test(callLead.buyer.trim()) ? callLead.buyer.trim().split(/\s+/)[0] : "there"}, Bryan here from Outbounder. I just tried your line about ${callLead.company}. Is a short conversation about your bookkeeping support relevant?`)}`} target="_blank" rel="noreferrer">WhatsApp</a></> : <span className="empty-state">No phone number is on file.</span>}
-                    </div>
-                    <CallScript key={callLead.id} script={callScript} />
-                    <Disclosure title="Why this company" className="call-context"><div className="call-signal"><p>{callLead.signal || callLead.summary || "No qualifying signal has been recorded."}</p></div>{callLead.facility && <p className="call-facility">{callLead.facility}{callLead.accountingSoftware ? ` · ${callLead.accountingSoftware}` : ""}</p>}{callLead.source && <a className="button secondary call-source" href={callLead.source} target="_blank" rel="noreferrer">Open source <Glyph name="external" /></a>}</Disclosure>
-                    <details className="contact-edit-fold">
-                      <summary>Edit contact details</summary>
-                      <form className="contact-edit-form" onSubmit={(event) => void saveCallContact(event)}>
-                        <label><span>Buyer / contact</span><input disabled={contactSaving || callSaving} maxLength={160} value={contactDraft.buyer} onChange={(event) => setContactDraft((draft) => ({ ...draft, buyer: event.target.value }))} /></label>
-                        <label><span>Title</span><input disabled={contactSaving || callSaving} maxLength={160} value={contactDraft.title} onChange={(event) => setContactDraft((draft) => ({ ...draft, title: event.target.value }))} /></label>
-                        <label><span>Email</span><input type="email" disabled={contactSaving || callSaving} maxLength={254} value={contactDraft.email} onChange={(event) => setContactDraft((draft) => ({ ...draft, email: event.target.value }))} /></label>
-                        <label><span>Phone</span><input type="tel" disabled={contactSaving || callSaving} maxLength={120} value={contactDraft.phone} onChange={(event) => setContactDraft((draft) => ({ ...draft, phone: event.target.value }))} /></label>
-                        <div className="contact-edit-footer"><span>Changing the email clears its previous source and MX checks.</span><button className="button secondary" type="submit" disabled={contactSaving || callSaving}>{contactSaving ? "Saving…" : "Save contact"}</button></div>
-                      </form>
-                    </details>
-                    <label className="call-notes-label" htmlFor="call-notes">Call notes</label><textarea id="call-notes" className="call-notes" maxLength={1000} value={callNotes} disabled={callSaving} onChange={(event) => setCallNotes(event.target.value)} placeholder="What happened? What should you remember next time?" rows={3} />
-                    <Disclosure title="Follow-up & duration"><div className="call-followup-fields">
-                      <label><span>Next follow-up · your local time</span><input type="datetime-local" value={callFollowup} disabled={callSaving} onChange={(event) => setCallFollowup(event.target.value)} /></label>
-                      <label><span>Call duration · seconds</span><input type="number" min="0" max="3600" step="1" value={callDuration} disabled={callSaving} onChange={(event) => setCallDuration(event.target.value)} /></label>
-                    </div></Disclosure>
-                    <div className="call-outcomes"><span className="eyebrow">Result · saves and moves next</span><div>{primaryCallCodes.map((code) => <button key={code} className={`button${code === "CONNECTED_MEETING_BOOKED" ? " outcome-booked" : code === "CONNECTED_NOT_INTERESTED" ? " outcome-negative" : " outcome-pending"}`} disabled={callSaving} onClick={() => void logCallOutcome(code)}>{callSaving ? "Saving…" : code === "NO_ANSWER_RING_OUT" ? "No answer" : code === "CONNECTED_CALLBACK" ? "Follow up" : CALL_DISPOSITIONS.find((item) => item.code === code)?.label}</button>)}</div>
-                    <Disclosure title="Other results"><div className="call-outcome-options">{CALL_DISPOSITIONS.filter((item) => !primaryCallCodes.includes(item.code)).map((outcome) => <button key={outcome.code} className={`button secondary${outcome.code === "BAD_NUMBER" ? " outcome-negative" : " outcome-pending"}`} disabled={callSaving} onClick={() => void logCallOutcome(outcome.code)}>{outcome.label}</button>)}</div></Disclosure></div>
-                    <div className="call-stepper"><button className="quiet-link" disabled={callSaving || callIndex === 0} onClick={() => { if (allowCallChange()) setCallIndex((index) => Math.max(0, index - 1)); }}>← Previous</button><span>Skip does not save a result</span><button className="quiet-link" disabled={callSaving} onClick={() => { if (allowCallChange()) setCallIndex((index) => index + 1); }}>Skip →</button></div>
-                  </>}
-                </article>
-                <aside className="call-side-panel">
-                  <span className="eyebrow">Today · UTC</span>
-                  <div className="call-metric-grid">
-                    <div><span>Dials</span><strong>{callMetricsError ? "—" : callDashboard?.metrics.dialsToday ?? "—"}</strong></div>
-                    <div><span>Connects</span><strong>{callMetricsError ? "—" : callDashboard?.metrics.connectsToday ?? "—"}</strong></div>
-                    <div><span>Meetings</span><strong>{callMetricsError ? "—" : callDashboard?.metrics.meetingsBookedToday ?? "—"}</strong></div>
-                  </div>
-                  {callMetricsError && <div className="panel-feedback" role="alert"><p>{callMetricsError}</p><button type="button" className="button secondary" onClick={() => setCallMetricsRetry((current) => current + 1)}>Retry call metrics</button></div>}
-                  <div className="side-rule" />
-                  <span className="eyebrow">RECENT CALL HISTORY</span>
-                  {callMetricsError ? <p className="call-history-empty">History unavailable until refresh.</p> : !callDashboard ? <p className="call-history-empty" role="status">Loading call history…</p> : callDashboard.recentCalls.length ? <ol className="call-history-list">{callDashboard.recentCalls.map((item) => <li key={item.callId}>
-                    <div><strong>{item.company || item.targetName || "Unknown prospect"}</strong><time>{new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(item.createdAt))}</time></div>
-                    <span>{CALL_DISPOSITIONS.find((outcome) => outcome.code === item.disposition)?.label || item.disposition}{item.targetName ? ` · ${item.targetName}` : ""}</span>
-                    {item.notes && <p>{item.notes}</p>}
-                    {item.nextFollowupAt && <small>Follow-up {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.nextFollowupAt))}</small>}
-                  </li>)}</ol> : <p>No call outcomes have been logged in this scope yet.</p>}
-                  <div className="side-rule" />
-                </aside>
-              </div>}
             </section>}
 
             {page === "campaigns" && <section className="page-content" aria-label="Email campaigns">

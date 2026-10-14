@@ -49,7 +49,7 @@ try {
   const layouts=[];
   for(const width of [375,1440]){
     await page.setViewportSize({width,height:900});
-    for(const route of ['/#campaigns','/#prospects','/#dialer','/#settings','/activity','/mailboxes','/playbooks','/yc','/import']){
+    for(const route of ['/#campaigns','/#prospects','/#settings','/activity','/mailboxes','/playbooks','/yc','/import']){
       await page.goto(`${base}${route}`);await page.locator('main').waitFor();
       const layout=await page.evaluate(()=>({width:innerWidth,documentWidth:document.documentElement.scrollWidth}));
       assert.ok(layout.documentWidth<=width+1,`${route} overflows at ${width}`);layouts.push({route,...layout});

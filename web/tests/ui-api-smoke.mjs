@@ -28,13 +28,6 @@ console.log('PASS approval round trip');
 assert.equal((await request('/api/prospects', { id, status: 'Made up stage' }, 'PATCH')).status, 400);
 console.log('PASS invalid stage rejected');
 
-const outcome = await request('/api/calls', {
-  leadId: id, disposition: 'CONNECTED_CALLBACK', notes: 'Synthetic API QA only; no call made.',
-});
-assert.equal(outcome.status, 201);
-assert.equal((await request(`/api/prospects?id=${id}`)).body.status, 'Nurture / Follow-up');
-console.log('PASS follow-up outcome and stage round trip');
-
 const preflight = await request('/api/email-preflight?leadId=uiqa_lead_001');
 assert.equal(preflight.status, 200);
 assert.equal(preflight.body.prospect.contact_email, 'alex@acorn.example.test');
@@ -52,4 +45,4 @@ console.log('PASS preview, confirmation gate and import round trip');
 const dispatcher = await request('/api/dispatch');
 assert.equal(dispatcher.status, 503);
 console.log('PASS isolated dispatcher unavailable (no sends possible through this service)');
-console.log('6 integration checks passed');
+console.log('5 integration checks passed');

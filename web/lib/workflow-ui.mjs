@@ -14,12 +14,11 @@ export const stageLabels = {
 };
 
 export const primaryStages = ["Ready to Review", "Approved for Outreach", "Replied (Warm)", "Discovery Call Booked", "Closed Won (Retainer Signed)", "Discarded / DNC"];
-export const primaryCallCodes = ["NO_ANSWER_RING_OUT", "CONNECTED_CALLBACK", "CONNECTED_MEETING_BOOKED", "CONNECTED_NOT_INTERESTED"];
 
 export function stageLabel(value) { return stageLabels[value] || value || "Unassigned"; }
 export function pageFromHash(hash) {
   const value = hash.replace(/^#/, "");
-  return ["campaigns", "prospects", "dialer", "settings"].includes(value) ? value : "campaigns";
+  return ["campaigns", "prospects", "settings"].includes(value) ? value : "campaigns";
 }
 export function startBlockReason({ available, busy, selected, templateA, templateB }) {
   if (!available) return "Email service unavailable. Retry the connection.";

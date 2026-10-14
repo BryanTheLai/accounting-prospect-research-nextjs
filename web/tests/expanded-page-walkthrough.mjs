@@ -10,7 +10,7 @@ const errors=[],failed=[],results=[];
 page.on("pageerror",e=>errors.push(e.message));
 page.on("request",r=>assert.equal(r.method(),"GET","Expanded live walkthrough must never mutate"));
 page.on("response",r=>{if(new URL(r.url()).pathname.startsWith("/api/")&&r.status()>=400)failed.push({url:new URL(r.url()).pathname,status:r.status()});});
-const routes=["/#campaigns","/#prospects","/#dialer","/#settings","/activity","/mailboxes","/playbooks","/yc","/import","/email-preflight?return=settings"];
+const routes=["/#campaigns","/#prospects","/#settings","/activity","/mailboxes","/playbooks","/yc","/import","/email-preflight?return=settings"];
 try{
  for(const width of [1440,768,375,320]){
   await page.setViewportSize({width,height:900});
@@ -18,7 +18,6 @@ try{
    await page.goto("about:blank");await page.goto(`${base}${path}`);
    if(path==="/#campaigns")await page.waitForFunction(()=>document.querySelector('.dispatch-state')?.textContent.trim()&&!document.querySelector('.dispatch-state').textContent.includes('Connecting'));
    else if(path==="/#prospects")await page.locator(".prospect-row").first().waitFor();
-   else if(path==="/#dialer")await page.locator(".script-copy").waitFor();
    else if(path==="/#settings"){await page.getByRole("combobox",{name:"Campaign scope",exact:true}).selectOption("hydroball_clones");await page.getByText("Send window",{exact:true}).waitFor();}
    else if(path==="/activity")await page.getByRole("img",{name:"Daily email activity line chart",exact:true}).waitFor();
    else if(path==="/mailboxes"){
@@ -37,11 +36,6 @@ try{
     await summary.focus();await summary.press("Enter");assert.equal(await details.evaluate(n=>n.open),false);
     await summary.press("Enter");assert.equal(await details.evaluate(n=>n.open),true);
     panels.push(label);
-   }
-   if(path==="/#dialer"){
-    const ys=await page.locator(".call-metric-grid > div").evaluateAll(ns=>ns.map(n=>n.getBoundingClientRect().y));assert.equal(new Set(ys).size,1);
-    const options=page.locator(".call-outcome-options");assert.equal(await options.locator("button").count()>0,true);
-    const bounds=await options.locator("button").first().boundingBox();assert.ok(bounds.height>=44);
    }
    for(const disclosure of await page.locator("main details.simple-disclosure").all()){
     const spacing=await disclosure.evaluate(node=>{
