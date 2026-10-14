@@ -1,0 +1,93 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Sensitive Environment Configurations & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.toml
+
+# SQLite WAL and Temporary Lock Files (Keep leads.db safe from lock sync conflicts)
+*.db-wal
+*.db-shm
+*.db-journal
+
+# Internal Scratch and Build Artifacts
+scratch/
+.master-leads-build/
+*.log
+
+# OS & Editor Artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# Prospect, customer, and operational data
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.xlsm
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.db-wal
+*.db-shm
+*.db-journal
+lead-routes/
+baseline-research/
+interviews/
+archive/
+
+# Local/generated build output
+.next/
+.next-qa/
+out/
+dist/
+node_modules/
+
+# Live DNS zone exports (contain real M365/Cloudflare records for the sending domain)
+*.zone
+cloudflare_dns_records.json
+
+# Orphaned git pointer from the previous (deleted) worktree repo
+.git.orphan.bak
+.gitfile.bak
+
+# Compiled sales collateral / generated PDFs
+*.pdf
+
+# Operational datasets, QA captures and research archives (~1GB, contain prospect PII,
+# page captures and SQLite backups). The reusable tooling .py files under operations/
+# stay tracked; data and artifacts do not.
+operations/**
+!operations/**/*.py
+!operations/**/.gitkeep
+
+# Runtime scratch (supervisor status, logs, transient)
+operations/runtime/
+.tmp/
+logs/
+*.out
+*.err

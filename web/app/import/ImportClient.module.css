@@ -1,0 +1,352 @@
+.page {
+  min-height: 100vh;
+  padding: 96px 40px 64px;
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+.heading, .safetyNote, .importPanel {
+  max-width: 1140px;
+  margin-inline: auto;
+}
+
+.heading {
+  margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.back {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+}
+
+.heading h1 {
+  font-size: clamp(26px, 3.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  margin: 0 0 6px;
+}
+
+.heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.safetyNote {
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-left: 3px solid #6366f1;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.importPanel {
+  margin-bottom: 20px;
+  padding: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-glass);
+}
+
+.sectionHead {
+  margin-bottom: 20px;
+}
+
+.sectionHead h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.field {
+  margin-bottom: 16px;
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fieldHint {
+  font-weight: 400;
+}
+
+.field select, .field textarea, .field input[type="file"] {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.field textarea {
+  min-height: 180px;
+  font-family: var(--mono);
+}
+
+.sourceFooter, .confirmBar {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sourceFooter > span, .confirmBar > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.primaryButton {
+  min-height: 42px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s var(--spring);
+}
+
+.primaryButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.error, .success {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.error {
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.success {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.counts {
+  margin: 10px 0 20px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.counts > div {
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.counts strong {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.counts span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.mappings {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-sm);
+}
+
+.mappings > strong {
+  font-size: 12px;
+}
+
+.mappings > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.mappings small {
+  font-size: 10px;
+}
+
+.tableScroll {
+  overflow-x: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tableScroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tableScroll th {
+  height: 38px;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.tableScroll td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  vertical-align: top;
+}
+
+.companyCell {
+  color: #ffffff !important;
+  font-weight: 650;
+}
+
+.state {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ready {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.existing {
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.duplicate, .invalid {
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.confirmDialog {
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  width: min(100%, 500px);
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xl);
+}
+
+.confirmDialog h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.confirmDialog p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dialogActions {
+  margin-top: 24px;
+  padding-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 768px) {
+  .page { padding: calc(72px + env(safe-area-inset-top)) 12px 24px; }
+  .back { min-height: 44px; }
+  .importPanel { padding: 12px; box-shadow: none; backdrop-filter: none; }
+  .sourceFooter, .confirmBar { flex-direction: column; align-items: stretch; gap: 12px; }
+  .counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mappings { overflow-wrap: anywhere; }
+  .tableScroll table, .tableScroll tbody { display: block; }
+  .tableScroll thead { display: none; }
+  .tableScroll tr { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .tableScroll td { min-width: 0; padding: 0; border: 0; overflow-wrap: anywhere; }
+  .tableScroll td::before { content: attr(data-label); display: inline-block; min-width: 70px; color: var(--muted); }
+  .confirmDialog { padding: 20px; }
+  .dialogActions { flex-wrap: wrap; }
+  .heading { margin-bottom: 12px; }
+  .heading h1 { font-size: 24px; }
+  .heading p { font-size: 12px; }
+  .back { margin-bottom: 8px; }
+  .safetyNote { padding: 10px 12px; margin-bottom: 12px; }
+  .sectionHead { margin-bottom: 12px; }
+  .sectionHead h2 { font-size: 16px; }
+  .field { margin-bottom: 12px; gap: 4px; }
+  .counts > div { padding: 10px 12px; }
+}
+
+.heading h1, .sectionHead h2, .counts strong, .mappings > strong, .confirmDialog h2 { color: var(--ink); }
+.back, .eyebrow, .mappings b { color: var(--text-accent); }
+.safetyNote { background: var(--info-soft); border-color: #ccd9f6; color: var(--muted); }
+.safetyNote strong { color: var(--ink); }
+.importPanel, .confirmDialog { background: var(--sheet); border-color: var(--line); }
+.field select, .field textarea, .field input[type="file"] { background: var(--sheet); color: var(--ink); border-color: var(--line-strong); }
+.primaryButton { background: var(--acid); color: #24210f; border-color: #dfba35; box-shadow: none; }
+.primaryButton:hover:not(:disabled) { background: #eac13a; transform: none; }
+.error, .duplicate, .invalid { background: var(--danger-soft); color: var(--red); border-color: #f0c5cb; }
+.success, .ready { background: var(--good-soft); color: var(--forest); border-color: #b9ddc7; }
+.existing { background: var(--warning-soft); color: var(--amber); border-color: #ead99f; }
+.counts > div, .mappings { background: var(--wash); border-color: var(--line); }
+.tableScroll, .tableScroll th, .tableScroll td, .dialogActions { border-color: var(--line); }
+.tableScroll td, .confirmDialog p { color: var(--ink); }
+.companyCell { color: var(--ink) !important; }
+.fieldHint, .mappings small, .tableScroll th { color: var(--muted); }
+.confirmDialog { box-shadow: 0 16px 48px rgba(24,34,50,.18); }

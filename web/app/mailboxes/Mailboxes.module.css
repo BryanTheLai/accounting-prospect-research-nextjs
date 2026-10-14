@@ -1,0 +1,426 @@
+.page {
+  min-height: 100vh;
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.content {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 96px 40px 64px;
+}
+
+.heading {
+  margin-bottom: 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.heading h1 {
+  font-size: clamp(26px, 3.2vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  margin: 0 0 6px;
+}
+
+.heading p {
+  max-width: 670px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.actions, .formActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.primary, .secondary {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s var(--spring);
+}
+
+.primary {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.secondary {
+  border: 1px solid var(--line);
+  color: var(--ink);
+  backdrop-filter: blur(12px);
+}
+
+.primary:disabled, .secondary:disabled {
+  cursor: wait;
+  opacity: 0.5;
+  transform: none;
+}
+
+.error, .notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.error {
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.notice {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(340px, 1fr);
+  align-items: start;
+  gap: 28px;
+}
+
+.panel, .formPanel {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-glass);
+}
+
+.formPanel {
+  margin-bottom: 24px;
+}
+
+.panelHeading {
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panelHeading h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.textButton {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+}
+
+.mailboxes {
+  display: grid;
+  gap: 14px;
+}
+
+.mailbox {
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius);
+  transition: all 0.2s ease;
+}
+
+.mailboxHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mailboxHead > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.mailboxHead strong {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mailboxHead small, .host, .privacyNote {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.host {
+  margin: 6px 0 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.health {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.good {
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.warn {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.bad {
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.quota {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.quota > div:not(.track) {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.quota strong {
+  font-family: var(--mono);
+}
+
+.track {
+  height: 6px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  border-radius: 9999px;
+}
+
+.track i {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+}
+
+.mailboxFoot {
+  margin-top: 14px;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.status {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rowActions button {
+  min-width: 44px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all 0.15s ease;
+}
+
+.actionLabel {
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.suppressionForm {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+
+.suppressionForm label, .form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.suppressionList {
+  max-height: 520px;
+  overflow-y: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.suppression {
+  padding: 12px 6px;
+  display: grid;
+  gap: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.suppression strong {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.suppression span, .suppression small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.advanced {
+  grid-column: 1 / -1;
+}
+
+.advancedFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.advanced summary {
+  grid-column: 1 / -1;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 8px 0;
+}
+
+.formNote {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.quotaNote {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.formActions {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .content { padding: calc(72px + env(safe-area-inset-top)) 12px 24px; }
+  .heading { flex-direction: column; align-items: stretch; gap: 12px; }
+  .actions, .formActions, .mailboxHead, .mailboxFoot, .rowActions { flex-wrap: wrap; }
+  .actions > button { flex: 1; }
+  .panel, .formPanel, .mailbox { padding: 12px; box-shadow: none; backdrop-filter: none; }
+  .form, .advancedFields { grid-template-columns: minmax(0, 1fr); }
+  .form > label { min-width: 0; }
+  .advanced:not([open]) > label { display: none; }
+  .host, .suppression { overflow-wrap: anywhere; }
+  .mailboxFoot { align-items: stretch; }
+  .rowActions { width: 100%; gap: 8px; }
+  .rowActions > button { flex: 1; padding: 10px; }
+  .actionLabel { font-size: 11px; }
+  .formActions > button { flex: 1; }
+  .heading { margin-bottom: 12px; }
+  .heading h1 { font-size: 24px; }
+  .heading p { font-size: 12px; }
+  .panelHeading { margin-bottom: 12px; padding-bottom: 10px; }
+  .panelHeading h2 { font-size: 15px; }
+  .columns { gap: 12px; }
+  .formPanel { margin-bottom: 12px; }
+  .form, .advancedFields { gap: 14px; }
+  .suppressionForm { padding: 12px; gap: 10px; }
+}
+
+.heading h1, .panelHeading h2, .mailboxHead strong, .quota strong,
+.suppression strong, .advanced summary { color: var(--ink); }
+.eyebrow { color: var(--text-accent); }
+.primary { background: var(--acid); color: #24210f; border-color: #dfba35; box-shadow: none; }
+.primary:hover { background: #eac13a; box-shadow: none; transform: none; }
+.secondary { background: var(--sheet); border-color: var(--line-strong); }
+.secondary:hover { background: var(--wash); border-color: var(--line-strong); transform: none; }
+.panel, .formPanel, .mailbox { background: var(--sheet); border-color: var(--line); }
+.mailbox:hover { background: var(--card-hover); border-color: var(--line-strong); }
+.panelHeading, .mailboxFoot, .suppressionList, .suppression { border-color: var(--line); }
+.textButton:hover { color: var(--ink); background: var(--wash); }
+.good, .notice { background: var(--good-soft); color: var(--forest); border-color: #b9ddc7; }
+.warn { background: var(--warning-soft); color: var(--amber); border-color: #ead99f; }
+.bad, .error { background: var(--danger-soft); color: var(--red); border-color: #f0c5cb; }
+.track { background: var(--wash); }
+.track i { background: var(--forest); box-shadow: none; }
+.rowActions button { background: var(--sheet); color: var(--ink); border-color: var(--line-strong); }
+.rowActions button:hover:not(:disabled) { background: var(--wash); border-color: var(--line-strong); }
+.rowActions .dangerText { background: var(--danger-soft); color: var(--red); border-color: #f0c5cb; }
+.rowActions .dangerText:hover:not(:disabled) { background: #ffe2e6; }
+.suppressionForm { background: var(--wash); border-color: var(--line); }
+.host { color: var(--muted); }

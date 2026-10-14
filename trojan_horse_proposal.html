@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1a202c;
+    line-height: 1.35;
+    font-size: 9.5pt;
+  }
+  .header {
+    border-bottom: 2px solid #2b6cb0;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .brand {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #1a365d;
+    letter-spacing: -0.5px;
+  }
+  .brand span {
+    color: #3182ce;
+  }
+  .badge {
+    background: #ebf8ff;
+    color: #2b6cb0;
+    font-size: 8pt;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+  .title-block {
+    background: #f7fafc;
+    border-left: 4px solid #3182ce;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: 13pt;
+    font-weight: 800;
+    color: #2d3748;
+    line-height: 1.25;
+    margin-bottom: 3px;
+  }
+  .subtitle {
+    font-size: 8.5pt;
+    color: #718096;
+    font-weight: 500;
+  }
+  .grid-2 {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .col {
+    flex: 1;
+  }
+  .card {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px;
+    background: #ffffff;
+  }
+  h2 {
+    font-size: 10pt;
+    font-weight: 700;
+    color: #1a365d;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #edf2f7;
+    padding-bottom: 3px;
+    display: flex;
+    justify-content: space-between;
+  }
+  table.comp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.5pt;
+    margin-bottom: 10px;
+  }
+  table.comp th {
+    background: #edf2f7;
+    color: #4a5568;
+    text-align: left;
+    padding: 5px 8px;
+    font-weight: 700;
+    border: 1px solid #cbd5e0;
+  }
+  table.comp td {
+    padding: 5px 8px;
+    border: 1px solid #e2e8f0;
+  }
+  tr.highlight {
+    background: #f0fff4;
+    font-weight: 700;
+  }
+  tr.highlight td {
+    color: #22543d;
+    font-size: 9.5pt;
+    border-top: 2px solid #38a169;
+  }
+  .tag-red {
+    color: #c53030;
+    font-weight: 600;
+  }
+  .tag-green {
+    color: #276749;
+    font-weight: 700;
+  }
+  ul.scope-list {
+    list-style: none;
+    padding-left: 0;
+  }
+  ul.scope-list li {
+    position: relative;
+    padding-left: 16px;
+    margin-bottom: 4px;
+    font-size: 8.5pt;
+    color: #2d3748;
+  }
+  ul.scope-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #38a169;
+    font-weight: 800;
+  }
+  .trial-box {
+    background: #feebc8;
+    border: 1px solid #fbd38d;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+  }
+  .trial-title {
+    font-size: 9.5pt;
+    font-weight: 800;
+    color: #7b341e;
+    margin-bottom: 2px;
+  }
+  .trial-desc {
+    font-size: 8pt;
+    color: #7b341e;
+    line-height: 1.3;
+  }
+  .footer {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8pt;
+    color: #718096;
+  }
+  .contact-cta {
+    font-weight: 700;
+    color: #2b6cb0;
+    font-size: 9pt;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="brand">Outbounder <span>Accounting Desk</span></div>
+    <div style="font-size: 8pt; color: #718096;">Cross-Border & SME Ledger Operations • openclose.sh</div>
+  </div>
+  <div class="badge">Executive Brief for Managing Directors</div>
+</div>
+
+<div class="title-block">
+  <h1>Why Hire a Full-Time Accounts Clerk for RM 3,500/Month<br>When You Can Outsource to a Chartered Desk for RM 600/Month?</h1>
+  <div class="subtitle">A direct financial & operational comparison for business owners currently reviewing job applicants on JobStreet / Indeed.</div>
+</div>
+
+<!-- COMPARISON TABLE -->
+<table class="comp">
+  <thead>
+    <tr>
+      <th style="width: 32%;">Cost & Operational Dimension</th>
+      <th style="width: 34%;">In-House Accounts Clerk (Johor / SG)</th>
+      <th style="width: 34%;">Outbounder Dedicated Accounting Desk</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Base Monthly Salary</strong></td>
+      <td><span class="tag-red">RM 2,800 – RM 3,800 / mo</span></td>
+      <td><span class="tag-green">RM 600 / mo (Flat Fixed Fee)</span></td>
+    </tr>
+    <tr>
+      <td><strong>Statutory Contributions (EPF/SOCSO/EIS)</strong></td>
+      <td><span class="tag-red">+RM 450 – RM 550 / mo (13% EPF)</span></td>
+      <td><span class="tag-green">RM 0 (Zero employment liability)</span></td>
+    </tr>
+    <tr>
+      <td><strong>Accounting Software Licenses</strong></td>
+      <td>RM 100 – RM 200 / user / mo</td>
+      <td><span class="tag-green">RM 0 (We sync directly into your setup)</span></td>
+    </tr>
+    <tr>
+      <td><strong>Hiring, Interviewing & Training Drag</strong></td>
+      <td>3–6 weeks resume filtering + 2 months training</td>
+      <td><span class="tag-green">Day-1 Operational Readiness (Ready tomorrow)</span></td>
+    </tr>
+    <tr>
+      <td><strong>Turnover & Sick Leave Risk</strong></td>
+      <td>Books stall when clerk leaves or takes MC</td>
+      <td><span class="tag-green">100% Redundant Desk (No single point of failure)</span></td>
+    </tr>
+    <tr>
+      <td><strong>Review & Signing Qualifications</strong></td>
+      <td>Junior clerk (No formal signing authority)</td>
+      <td><span class="tag-green">Chartered Oversight (ACCA, CA Malaysia, ISCA)</span></td>
+    </tr>
+    <tr class="highlight">
+      <td><strong>TOTAL ANNUAL COST</strong></td>
+      <td><strong>~RM 45,000 – RM 55,000 / year</strong></td>
+      <td><strong>RM 7,200 / year (<span class="tag-green">SAVE >RM 40,000/YR</span>)</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="grid-2">
+  <div class="col card">
+    <h2>1. Full Monthly Scope Included</h2>
+    <ul class="scope-list">
+      <li><strong>Bank & Statement Reconciliation:</strong> Reconcile sales, purchases, bank feeds, and credit cards to the cent.</li>
+      <li><strong>Bi-Monthly SST-02 Filing:</strong> Sales & Service Tax computed and lodged on time with Royal Malaysian Customs.</li>
+      <li><strong>LHDN e-Invoicing Compliance:</strong> End-to-end MyInvois digital invoice validation and UUID QR code handling.</li>
+      <li><strong>Payroll & Statutory Withholdings:</strong> Monthly EPF (KWSP), SOCSO, EIS, PCB (MTD) deductions & year-end Form EA.</li>
+      <li><strong>Statutory Year-End Audit Prep:</strong> Formatted audit schedules (FAR, aging, TB) handed directly to your auditors.</li>
+      <li><strong>Supported Systems:</strong> AutoCount, SQL Account, Xero, Bukku, Million, ABSS (MYOB), and Sage UBS.</li>
+    </ul>
+  </div>
+
+  <div class="col card">
+    <h2>2. Why This Works For Your Team</h2>
+    <div style="font-size: 8.5pt; color: #4a5568; line-height: 1.4; margin-bottom: 8px;">
+      Most business owners think they need an accounts clerk physically sitting at a desk. In reality, <strong>80% of an accounts clerk's daily work is repetitive digital data entry</strong>.
+    </div>
+    <div style="font-size: 8.5pt; color: #4a5568; line-height: 1.4; margin-bottom: 8px;">
+      With Outbounder, your warehouse admin or front-desk receptionist simply snaps photos of delivery orders and vendor bills into a shared drive or portal. Our chartered desk processes, reconciles, and compiles everything into your accounting ledger daily.
+    </div>
+    <div style="font-size: 8.5pt; color: #2d3748; font-weight: 600;">
+      Why pay RM 3,500/month for basic data entry when you can outsource the outcome for RM 600?
+    </div>
+  </div>
+</div>
+
+<div class="trial-box">
+  <div class="trial-title">⚡ The 30-Day Zero-Risk Trial Proposal</div>
+  <div class="trial-desc">
+    Before you commit to a 12-month employment contract, 13% statutory EPF, and a 3-month probation gamble on a new clerk: <strong>test Outbounder for 30 days at RM 600</strong>. If our chartered accountants do not close your month-end accounts cleaner, faster, and with fewer errors than an in-house hire, you can still proceed with hiring your candidate. If we do, you just saved your business over RM 40,000 this year.
+  </div>
+</div>
+
+<div class="footer">
+  <div>
+    <strong>Outbounder Accounting Desk</strong> • Kuala Lumpur & Johor Bahru Operations<br>
+    Senior Reviewers: Chartered Accountants (ACCA, CA Malaysia / MIA, CA Singapore)
+  </div>
+  <div style="text-align: right;">
+    <div class="contact-cta">Schedule a 10-Minute Walkthrough:</div>
+    <div>Bryan (Founder) • <strong>WhatsApp / Mobile: +60 11-1234 5678</strong> • <strong>bryan@openclose.sh</strong></div>
+  </div>
+</div>
+
+</body>
+</html>

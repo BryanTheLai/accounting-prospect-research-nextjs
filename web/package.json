@@ -1,0 +1,28 @@
+{
+  "name": "outbounder",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test --experimental-strip-types tests/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "qa": "node scripts/qc.mjs",
+    "dev": "node scripts/local.mjs dev",
+    "build": "next build --webpack",
+    "start": "node scripts/supervised.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "next": "^16.1.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "read-excel-file": "^9.3.10"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "playwright": "1.60.0",
+    "typescript": "^5.9.3"
+  }
+}
