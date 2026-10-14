@@ -105,28 +105,6 @@ try {
   await page.unroute('**/api/activity');
   checks.push('hide-all/restore, all-zero series and empty report have defined, valid states (browser-only synthetic responses)');
 
-  for (const width of [1440, 768, 375, 320]) {
-    await page.setViewportSize({ width, height: 900 });
-    await page.goto(`${base}/#dialer`);
-    const toolbar = page.locator(".call-queue-controls");
-    await toolbar.waitFor();
-    const callable = toolbar.getByRole("button", { name: "Callable leads", exact: true });
-    assert.match(await callable.getAttribute("title"), /Phone on file and fit score above 80/);
-    const controls = await toolbar.locator("button,input").evaluateAll((nodes) => nodes.map((node) => {
-      const r = node.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, height: r.height, width: r.width };
-    }));
-    assert.ok(controls.every((r) => r.height >= 43.5), `${width}: control height`);
-    assert.ok(Math.abs(controls[0].top-controls[1].top) < 1, `${width}: buttons misaligned`);
-    if (width > 640) assert.ok(Math.abs(controls[0].top-controls[2].top) < 1, `${width}: search and buttons misaligned`);
-    else {
-      assert.ok(controls[2].top >= controls[0].bottom, `${width}: search should occupy full next row`);
-      const toolbarBox = await toolbar.boundingBox();
-      assert.ok(Math.abs(controls[2].width-toolbarBox.width) < 1, `${width}: mobile search not full width`);
-    }
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    checks.push(`call toolbar aligned and readable at ${width}px`);
-  }
-  await page.screenshot({ path: `${output}/call-toolbar-mobile.png` });
   await page.goto(`${base}/mailboxes`);
   const senderRefresh = page.getByRole("button", { name: "Refresh mailboxes", exact: true });
   await senderRefresh.waitFor();

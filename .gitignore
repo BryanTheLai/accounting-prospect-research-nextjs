@@ -68,6 +68,7 @@ archive/
 out/
 dist/
 node_modules/
+*.tsbuildinfo
 
 # Live DNS zone exports (contain real M365/Cloudflare records for the sending domain)
 *.zone

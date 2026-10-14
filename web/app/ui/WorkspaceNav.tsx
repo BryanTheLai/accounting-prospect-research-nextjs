@@ -8,7 +8,6 @@ import { pageFromHash } from "@/lib/workflow-ui.mjs";
 const links = [
   { href: "/#campaigns", label: "Email", iconPath: "M3 5h18v14H3z M3 5l9 7 9-7", routes: [] },
   { href: "/#prospects", label: "Prospects", iconPath: "M8 3h8l4 4v14H4V3z M8 11h8 M8 16h8", routes: ["/yc", "/import"] },
-  { href: "/#dialer", label: "Call", iconPath: "M7 3h3l1 5-2 2a14 14 0 0 0 5 5l2-2 5 1v3a2 2 0 0 1-2 2A17 17 0 0 1 5 5a2 2 0 0 1 2-2", routes: [] },
   { href: "/activity", label: "Activity", iconPath: "M4 4v16h16 M8 15l4-4 3 2 5-7", routes: ["/activity"] },
   { href: "/#settings", label: "Settings", iconPath: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M5 19l2-2 M17 7l2-2", routes: ["/mailboxes", "/playbooks", "/email-preflight"] },
 ];

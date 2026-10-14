@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 
 const base = process.env.UI_QA_URL || "http://127.0.0.1:3001";
 assert.equal(new URL(base).hostname, "127.0.0.1");
-assert.equal(new URL(base).port, "3001", "Fixture service only; never run call writes against the live desk");
+assert.equal(new URL(base).port, "3001", "Fixture service only; never run writes against the live desk");
 const output = "../operations/minimalism-review-20261008";
 await mkdir(`${output}/screenshots`, { recursive: true });
 const templates = (await (await fetch(`${base}/api/playbooks`)).json()).templates;
@@ -17,10 +17,7 @@ const page = await context.newPage();
 const errors = [], checks = [];
 page.on("pageerror", (error) => errors.push(error.message));
 page.on("request", (request) => {
-  if (request.method() !== "GET") {
-    assert.equal(new URL(request.url()).origin, base);
-    assert.equal(new URL(request.url()).pathname, "/api/calls", "Only isolated fixture call records may be written");
-  }
+  if (request.method() !== "GET") assert.equal(new URL(request.url()).origin, base);
 });
 await page.route("**/api/dispatch?*", async (route) => {
   if (route.request().url().includes("mailboxPacing")) {
@@ -38,7 +35,7 @@ await page.route("**/api/dispatch?*", async (route) => {
 try {
   await page.goto(`${base}/#campaigns`);
   await page.locator(".dispatch-candidate").first().waitFor();
-  assert.equal(await page.locator(".dock-item").count(), 5);
+  assert.equal(await page.locator(".dock-item").count(), 4);
   assert.equal(await page.getByRole("link", { name: "Setup", exact: true }).count(), 0);
   assert.equal(await page.locator(".dock-telemetry").count(), 0);
   await page.locator(".dispatch-candidate input").first().check();
@@ -51,7 +48,7 @@ try {
   await page.locator(".campaign-email-preview-content").waitFor();
   await page.locator(".campaign-email-preview").scrollIntoViewIfNeeded();
   await page.screenshot({ path: `${output}/screenshots/selected-recipient-mobile.png` });
-  checks.push("five navigation choices; preview follows selection without a second search");
+  checks.push("four navigation choices; preview follows selection without a second search");
 
   await page.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByRole("link", { name: /Campaign setup/ }).click();
@@ -84,51 +81,6 @@ try {
   assert.equal(await page.getByLabel("Campaign scope", { exact: true }).inputValue(), first.campaignId);
   checks.push("custom imported stages filter/display without mutation; email-check return preserves campaign/contact");
   await page.getByRole("button", { name: "Close prospect details" }).click();
-
-  await page.getByRole("link", { name: "Call", exact: true }).click();
-  await page.getByText("Queue filters", { exact: false }).first().click();
-  await page.getByLabel("Search call queue", { exact: true }).fill("Pagination");
-  await page.getByRole("heading", { name: "Synthetic Pagination Contact 000", exact: true }).waitFor();
-  await page.locator("#call-notes").fill("Keep these unsaved notes");
-  page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("button", { name: "Skip →", exact: true }).click();
-  assert.equal(await page.locator("#call-notes").inputValue(), "Keep these unsaved notes");
-  await page.getByRole("heading", { name: "Synthetic Pagination Contact 000", exact: true }).waitFor();
-  page.once("dialog", (dialog) => dialog.dismiss());
-  await page.getByRole("link", { name: "Email", exact: true }).click();
-  assert.equal(new URL(page.url()).hash, "#dialer");
-  page.once("dialog", (dialog) => dialog.accept());
-  await page.getByRole("button", { name: "Skip →", exact: true }).click();
-  await page.getByRole("heading", { name: "Synthetic Pagination Contact 001", exact: true }).waitFor();
-  assert.equal(await page.locator("#call-notes").inputValue(), "");
-  await page.getByRole("button", { name: "← Previous", exact: true }).click();
-  checks.push("unsaved notes are kept on cancelled navigation; discard requires confirmation");
-
-  for (let i = 0; i < 99; i++) await page.getByRole("button", { name: "Skip →", exact: true }).click();
-  await page.getByRole("heading", { name: "Synthetic Pagination Contact 099", exact: true }).waitFor();
-  await page.locator("#call-notes").fill("Delayed-save fixture proof");
-  let release;
-  await page.route("**/api/calls", async (route) => {
-    if (route.request().method() !== "POST") { await route.continue(); return; }
-    await new Promise((resolve) => { release = resolve; });
-    await route.continue();
-  });
-  await page.getByRole("button", { name: "No answer", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector("#call-notes")?.disabled);
-  assert.equal(await page.getByLabel("Call script style", { exact: true }).isDisabled(), true);
-  assert.equal(await page.getByLabel("Campaign scope", { exact: true }).isDisabled(), true);
-  assert.equal(await page.getByRole("button", { name: "Skip →", exact: true }).isDisabled(), true);
-  await page.getByRole("link", { name: "Email", exact: true }).click();
-  assert.equal(new URL(page.url()).hash, "#dialer");
-  release();
-  await page.getByRole("button", { name: "Load next contacts", exact: true }).waitFor();
-  await page.unroute("**/api/calls");
-  await page.getByRole("button", { name: "Load next contacts", exact: true }).click();
-  await page.getByRole("heading", { name: "Synthetic Pagination Contact 100", exact: true }).waitFor();
-  await page.getByRole("button", { name: "No answer", exact: true }).click();
-  await page.getByText("Queue complete. No more contacts in this view.", { exact: true }).waitFor();
-  assert.equal(await page.getByRole("button", { name: "No answer", exact: true }).count(), 0);
-  checks.push("slow save locks contact changes; contact100 continues to101; final save shows completion");
 
   const layouts = [];
   for (const width of [375, 1440]) {

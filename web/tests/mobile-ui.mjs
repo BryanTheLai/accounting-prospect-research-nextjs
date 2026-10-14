@@ -18,7 +18,7 @@ page.on("response", (response) => {
 });
 const results = [];
 const flows = [];
-const routes = ["/#campaigns", "/#prospects", "/#dialer", "/#settings", "/playbooks", "/activity", "/mailboxes", "/email-preflight", "/import", "/yc"];
+const routes = ["/#campaigns", "/#prospects", "/#settings", "/playbooks", "/activity", "/mailboxes", "/email-preflight", "/import", "/yc"];
 
 async function layout() {
   return page.evaluate(() => {
@@ -222,18 +222,6 @@ try {
     await page.locator(".campaign-email-preview-content").waitFor();
     await page.getByRole("tab", { name: "Variant B", exact: true }).click();
     await checkFlow("Template preview and variant switching");
-
-    await page.goto(base + "/#dialer", { waitUntil: "networkidle" });
-    await page.getByLabel("Call script style").selectOption("all");
-    await page.locator("#call-notes").waitFor();
-    await page.locator("summary").filter({ hasText: "Edit contact details" }).click();
-    await page.locator("summary").filter({ hasText: "Follow-up & duration" }).click();
-    await checkFlow("Populated call sheet, contact edit and follow-up fields");
-    await page.screenshot({ path: resolve(output, "call-mobile.png") });
-    await page.locator("#call-notes").fill("Synthetic browser QA only. No actual phone call was made.");
-    await page.getByRole("button", { name: "Follow up", exact: true }).click();
-    await page.getByRole("status").filter({ hasText: "Call outcome saved" }).waitFor();
-    flows.push("Synthetic call result saved and queue advanced; no phone call made");
 
     await page.goto(base + "/mailboxes", { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Add mailbox", exact: true }).click();

@@ -12,17 +12,12 @@ const browser = await chromium.launch();
 const snapshots = [];
 try {
   for (const width of [320, 390, 1280]) {
-    for (const route of ["/#campaigns", "/#prospects", "/#dialer", "/#settings", "/playbooks", "/activity", "/mailboxes", "/email-preflight?leadId=uiqa_lead_001", "/import", "/yc"]) {
+    for (const route of ["/#campaigns", "/#prospects", "/#settings", "/playbooks", "/activity", "/mailboxes", "/email-preflight?leadId=uiqa_lead_001", "/import", "/yc"]) {
       const page = await browser.newPage({ reducedMotion: "reduce", viewport: { width, height: 844 } });
       await page.goto(base + route, { waitUntil: "networkidle" });
-      const navLabel = route.includes("#prospects") || route === "/import" || route === "/yc" ? "Prospects" : route.includes("#dialer") ? "Call" : route.includes("#settings") || route === "/mailboxes" ? "Settings" : route === "/playbooks" ? "Setup" : route === "/activity" ? "Activity" : "Email";
+      const navLabel = route.includes("#prospects") || route === "/import" || route === "/yc" ? "Prospects" : route.includes("#settings") || route === "/mailboxes" ? "Settings" : route === "/playbooks" ? "Setup" : route === "/activity" ? "Activity" : "Email";
       await page.getByRole("link", { name: navLabel, exact: true }).and(page.locator('[aria-current="page"]')).waitFor();
       await page.evaluate(() => document.querySelectorAll("details").forEach((element) => { element.open = true; }));
-      if (route === "/#dialer") {
-        await page.getByLabel("Call script style").selectOption("all");
-        await page.locator("#call-notes").waitFor();
-        await page.evaluate(() => document.querySelectorAll("details").forEach((element) => { element.open = true; }));
-      }
       await page.waitForLoadState("networkidle");
       if (route === "/#settings") await page.locator(".dns-record-guide li").first().waitFor();
       await page.evaluate(() => new Promise((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(resolveFrame))));
