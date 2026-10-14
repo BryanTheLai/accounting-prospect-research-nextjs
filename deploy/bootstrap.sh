@@ -108,7 +108,12 @@ export NODE_OPTIONS="--max-old-space-size=${NODE_BUILD_HEAP:-384}"
 npm run build
 
 log "Seeding the database from the uploaded file (if present)"
-if [ -f /root/outbounder-deploy/leads.sqlite ]; then
+# Never overwrite a database that already exists on the server: it holds send
+# history and the per-mailbox pacing settings, which must survive redeploys.
+if [ -f "$DATA_DIR/leads.sqlite" ]; then
+  log "Existing database found - keeping it (OUTBOUNDER_DB_EXISTS)"
+  sqlite3 "$DATA_DIR/leads.sqlite" 'PRAGMA journal_mode=WAL;' || true
+elif [ -f /root/outbounder-deploy/leads.sqlite ]; then
   cp /root/outbounder-deploy/leads.sqlite "$DATA_DIR/leads.sqlite"
   sqlite3 "$DATA_DIR/leads.sqlite" 'PRAGMA journal_mode=WAL;'
   sqlite3 "$DATA_DIR/leads.sqlite" 'PRAGMA quick_check;' | sed 's/^/  quick_check: /'
