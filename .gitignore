@@ -46,6 +46,8 @@ desktop.ini
 *.xlsx
 *.xls
 *.xlsm
+# ...except the small workbook fixtures the import tests need on a fresh clone
+!web/tests/fixtures/*.xlsx
 *.db
 *.sqlite
 *.sqlite3
