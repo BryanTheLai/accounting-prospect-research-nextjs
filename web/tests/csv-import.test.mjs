@@ -103,7 +103,7 @@ test("explicit contact columns are imported literally but remain in review", () 
   }
 });
 
-test("existing companies and repeated CSV rows are skipped without updates", () => {
+test("existing companies are updated in place; repeated CSV rows are skipped", () => {
   const db = createFixture();
   try {
     db.prepare(`INSERT INTO prospects (lead_id, company_name, contact_email, status, notes, campaign_id)
@@ -117,17 +117,19 @@ test("existing companies and repeated CSV rows are skipped without updates", () 
     const preview = previewCsvImport(db, csv, "yc_us_expansion");
     assert.equal(preview.readyRows, 1);
     assert.equal(preview.existingRows, 1);
+    assert.equal(preview.updatedRows, 1);
     assert.equal(preview.duplicateRows, 1);
     const result = importCsvRows(db, csv, "yc_us_expansion");
     assert.equal(result.added, 1);
-    assert.equal(result.skipped, 2);
+    assert.equal(result.updated, 1);
+    assert.equal(result.skipped, 1);
+    // The mapped email is overwritten, but identity, pipeline stage and any
+    // column the file left blank are preserved.
     const existing = db.prepare("SELECT contact_email, status, notes, campaign_id FROM prospects WHERE lead_id = ?").get("manual_1");
-    assert.deepEqual(existing, {
-      contact_email: "reviewed@example.test",
-      status: "Approved for Outreach",
-      notes: "User notes",
-      campaign_id: "other_campaign",
-    });
+    assert.equal(existing.contact_email, "changed@example.test");
+    assert.equal(existing.status, "Approved for Outreach");
+    assert.match(existing.notes, /^User notes/);
+    assert.equal(existing.campaign_id, "other_campaign");
     assert.equal(db.prepare("SELECT COUNT(*) AS count FROM prospects WHERE lower(company_name) = 'new co'").get().count, 1);
   } finally {
     db.close();

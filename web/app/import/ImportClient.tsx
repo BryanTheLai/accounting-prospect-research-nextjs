@@ -28,11 +28,12 @@ type Preview = {
   totalRows: number;
   readyRows: number;
   existingRows: number;
+  updatedRows: number;
   duplicateRows: number;
   invalidRows: number;
   previewRows: PreviewRow[];
 };
-type ImportResult = { added: number; skipped: number; totalRows: number; campaign: Campaign };
+type ImportResult = { added: number; updated: number; skipped: number; totalRows: number; campaign: Campaign };
 
 const STATE_STYLES: Record<PreviewRow["state"], string> = {
   ready: styles.ready,
@@ -61,14 +62,14 @@ function isPreviewRow(value: unknown): value is PreviewRow {
 
 function isPreview(value: unknown): value is Preview {
   if (!isRecord(value) || !isCampaign(value.campaign) || !isRecord(value.mapping)) return false;
-  return ["totalRows", "readyRows", "existingRows", "duplicateRows", "invalidRows"].every((field) => typeof value[field] === "number") &&
+  return ["totalRows", "readyRows", "existingRows", "updatedRows", "duplicateRows", "invalidRows"].every((field) => typeof value[field] === "number") &&
     Array.isArray(value.ignoredHeaders) && value.ignoredHeaders.every((header) => typeof header === "string") &&
     Object.values(value.mapping).every((header) => typeof header === "string") &&
     Array.isArray(value.previewRows) && value.previewRows.every(isPreviewRow);
 }
 
 function isImportResult(value: unknown): value is ImportResult {
-  return isRecord(value) && typeof value.added === "number" && typeof value.skipped === "number" &&
+  return isRecord(value) && typeof value.added === "number" && typeof value.updated === "number" && typeof value.skipped === "number" &&
     typeof value.totalRows === "number" && isCampaign(value.campaign);
 }
 
@@ -271,7 +272,7 @@ export default function ImportClient() {
           <button type="button" className={styles.primaryButton} onClick={() => void requestPreview()} disabled={sourceBusy || !campaignId || (!xlsxFile && !csvText.trim())}>{readingFile ? "Reading file…" : previewing ? "Preparing preview…" : "Preview import"}</button>
         </div>
         {error && <p className={styles.error} role="alert">{error}</p>}
-        {result && <p className={styles.success} role="status">Added {result.added}; skipped {result.skipped}; campaign: {result.campaign.name}. New rows need review; no email was sent.</p>}
+        {result && <p className={styles.success} role="status">Added {result.added}; updated {result.updated}; skipped {result.skipped}; campaign: {result.campaign.name}. New rows need review; no email was sent.</p>}
       </section>
 
       {preview && <section className={styles.importPanel} aria-labelledby="preview-title">
@@ -280,9 +281,9 @@ export default function ImportClient() {
           <h2 id="preview-title">Preview for {preview.campaign.name}</h2>
         </div>
         <div className={styles.counts} style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-          <div><strong>{preview.readyRows}</strong><span>will be added</span></div>
+          <div><strong>{preview.readyRows}</strong><span>will be added</span></div><div><strong>{preview.updatedRows}</strong><span>will be updated</span></div>
           <div><details><summary>Other rows: {preview.existingRows + preview.duplicateRows + preview.invalidRows}</summary>
-            <span>{preview.existingRows} already exist · {preview.duplicateRows} repeated in file · {preview.invalidRows} invalid</span>
+            <span>{preview.updatedRows} will be updated · {preview.duplicateRows} repeated in file · {preview.invalidRows} invalid</span>
           </details></div>
         </div>
         <div className={styles.mappings}>
@@ -290,7 +291,7 @@ export default function ImportClient() {
           <div>{Object.entries(preview.mapping).map(([field, header]) => <span key={field}>{field.replaceAll("_", " ")} ← <b>{header}</b></span>)}</div>
           {preview.ignoredHeaders.length > 0 && <small>Ignored columns: {preview.ignoredHeaders.join(", ")}</small>}
           <details><summary>Import rules</summary>
-            <small>Values are used only from the mapped columns. No email, name, or phone is inferred. Existing prospects are skipped unchanged.</small>
+            <small>Values are used only from the mapped columns. No email, name, or phone is inferred. Existing prospects are updated in place; empty file cells leave stored values untouched.</small>
             {xlsxFile && <small>Spreadsheet formulas are not calculated. Review the displayed values before confirming.</small>}
           </details>
         </div>
@@ -305,7 +306,7 @@ export default function ImportClient() {
         </div>
         {preview.totalRows > preview.previewRows.length && <p className={styles.previewLimit}>Showing the first {preview.previewRows.length} of {preview.totalRows.toLocaleString()} rows. Counts above cover the full file.</p>}
         <div className={styles.confirmBar}>
-          <span>Import rechecks for existing companies inside one database transaction. Existing records are never updated.</span>
+          <span>Import rechecks for existing companies inside one database transaction. Existing records are updated in place, without touching their pipeline stage or identity.</span>
           <button type="button" className={styles.primaryButton} onClick={() => setConfirming(true)} disabled={preview.readyRows === 0 || sourceBusy}>Confirm {preview.readyRows} new prospects</button>
         </div>
       </section>}
@@ -314,7 +315,7 @@ export default function ImportClient() {
         <section className={styles.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description">
           <span className={styles.eyebrow}>Final check</span>
           <h2 id="confirm-title">Insert {preview.readyRows} prospects?</h2>
-          <p id="confirm-description">This adds only new company records to {preview.campaign.name}. New rows will be Ready to Review. Contact values come only from mapped file columns; no email is generated, checked, or sent. Existing rows will be skipped unchanged.</p>
+          <p id="confirm-description">This adds new company records and updates existing ones in {preview.campaign.name}. New rows will be Ready to Review. Existing rows keep their stage and identity, and empty file cells do not erase stored values. Contact values come only from mapped file columns; no email is generated, checked, or sent.</p>
           <div className={styles.dialogActions}>
             <button type="button" onClick={() => setConfirming(false)} disabled={importing}>Go back</button>
             <button type="button" className={styles.primaryButton} onClick={() => void confirmImport()} disabled={importing}>{importing ? "Importing…" : "Confirm insert"}</button>

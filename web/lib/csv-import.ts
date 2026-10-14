@@ -242,11 +242,18 @@ function analyzeDocument(db: Database.Database, document: ImportDocument, campai
   }
 
   const { mapping, ignoredHeaders } = mapColumns(document.headers);
+  const existingRows = db.prepare<[], { company_name: string; lead_id: string }>(
+    "SELECT company_name, lead_id FROM prospects",
+  ).all();
   const existingNames = new Set(
-    db.prepare<[], { company_name: string }>("SELECT company_name FROM prospects").all()
-      .map((row) => normalizeCompanyName(row.company_name || ""))
-      .filter(Boolean),
+    existingRows.map((row) => normalizeCompanyName(row.company_name || "")).filter(Boolean),
   );
+  // Map normalized company name -> real lead_id so preview and apply agree on
+  // exactly which row an update targets.
+  const existingIds = new Map(
+    existingRows.map((row) => [normalizeCompanyName(row.company_name || ""), row.lead_id]),
+  );
+  const existingLeadIds = new Map<string, string>();
   const seenNames = new Set<string>();
   const analyzedRows: AnalyzedRow[] = document.records.map((importRow, index) => {
     const record = emptyImportRecord(index + 2);
@@ -278,12 +285,17 @@ function analyzeDocument(db: Database.Database, document: ImportDocument, campai
       record.reason = "Company name exceeds 160 characters.";
     } else {
       const key = normalizeCompanyName(company);
-      if (existingNames.has(key)) {
-        record.state = "existing";
-        record.reason = "Company already exists; existing record will be left unchanged.";
-      } else if (seenNames.has(key)) {
+      // A company repeated within the same file is a duplicate regardless of
+      // whether it also exists in the database: the first row always wins, so
+      // the last row can never clobber what the first one supplied.
+      if (seenNames.has(key)) {
         record.state = "duplicate";
         record.reason = "Duplicate company in this CSV; first row takes precedence.";
+      } else if (existingNames.has(key)) {
+        record.state = "existing";
+        record.reason = "Company already exists; the existing record will be updated with the mapped columns.";
+        existingLeadIds.set(key, existingIds.get(key) || "");
+        seenNames.add(key);
       } else {
         seenNames.add(key);
       }
@@ -298,11 +310,12 @@ function analyzeDocument(db: Database.Database, document: ImportDocument, campai
     totalRows: analyzedRows.length,
     readyRows: analyzedRows.filter((row) => row.record.state === "ready").length,
     existingRows: analyzedRows.filter((row) => row.record.state === "existing").length,
+    updatedRows: analyzedRows.filter((row) => row.record.state === "existing").length,
     duplicateRows: analyzedRows.filter((row) => row.record.state === "duplicate").length,
     invalidRows: analyzedRows.filter((row) => row.record.state === "invalid").length,
     previewRows: analyzedRows.slice(0, MAX_PREVIEW_ROWS).map((row) => row.record),
   };
-  return { summary, rows: analyzedRows };
+  return { summary, rows: analyzedRows, existingLeadIds };
 }
 
 export function listImportCampaigns(db: Database.Database) {
@@ -330,7 +343,7 @@ function importDocumentRows(db: Database.Database, document: ImportDocument, cam
     throw new ImportInputError("Choose an existing campaign before importing the file.");
   }
   const insertRows = db.transaction(() => {
-    const { summary, rows } = analyzeDocument(db, document, campaignId.trim());
+    const { summary, rows, existingLeadIds } = analyzeDocument(db, document, campaignId.trim());
     const prospectColumns = readProspectColumnNames(db);
     const fields = [
       "lead_id", "company_name", "company_summary", "root_domain", "headquarters", "sector",
@@ -344,12 +357,48 @@ function importDocumentRows(db: Database.Database, document: ImportDocument, cam
     const insert = db.prepare(`INSERT INTO prospects (${fields.map((field) => `"${field}"`).join(", ")})
       VALUES (${fields.map(() => "?").join(", ")}) ON CONFLICT(lead_id) DO NOTHING`);
     let added = 0;
+    let updated = 0;
     let skipped = summary.invalidRows + summary.duplicateRows;
+
+    // Columns an existing row may receive from the file. Identity, pipeline
+    // stage and scoring are deliberately excluded so a re-import can never
+    // reset someone's status or duplicate their lead_id.
+    const updatableFields = [
+      "company_summary", "root_domain", "headquarters", "sector",
+      "buyer_name", "buyer_title", "contact_email", "contact_phone",
+      "proof_link", "notes", "campaign_id",
+    ].filter((field) => prospectColumns.has(field));
+
     for (const { record, values } of rows) {
-      if (record.state !== "ready") {
-        if (record.state === "existing") skipped += 1;
+      if (record.state === "existing") {
+        const leadId = existingLeadIds.get(normalizeCompanyName(record.company));
+        if (!leadId) { skipped += 1; continue; }
+        const assignments: string[] = [];
+        const bound: Array<string | number> = [];
+        for (const field of updatableFields) {
+          if (field === "notes") continue; // handled separately below
+          const value = values[field as ImportField];
+          if (typeof value !== "string" || value.trim() === "") continue;
+          assignments.push(`"${field}" = ?`);
+          bound.push(value.trim());
+        }
+        if (updatableFields.includes("notes") && values.notes.trim() !== "") {
+          assignments.push(`"notes" = TRIM(COALESCE("notes", '') || char(10) || ?)`);
+          bound.push(`Imported from spreadsheet on ${new Date().toISOString().slice(0, 10)}.`);
+        }
+        if (assignments.length) {
+          const result = db.prepare(
+            `UPDATE prospects SET ${assignments.join(", ")} WHERE lead_id = ?`,
+          ).run(...bound, leadId);
+          if (result.changes) updated += 1;
+          else skipped += 1;
+        } else {
+          // Nothing in the file to apply; the row still matched, so count it.
+          updated += 1;
+        }
         continue;
       }
+      if (record.state !== "ready") continue;
       const safeValues: Record<string, string | number> = {
         lead_id: `import_${crypto.randomUUID().replaceAll("-", "")}`,
         company_name: record.company,
@@ -372,7 +421,7 @@ function importDocumentRows(db: Database.Database, document: ImportDocument, cam
       if (result.changes) added += 1;
       else skipped += 1;
     }
-    return { added, skipped, totalRows: summary.totalRows, campaign: summary.campaign };
+    return { added, updated, skipped, totalRows: summary.totalRows, campaign: summary.campaign };
   });
   return insertRows.immediate();
 }
