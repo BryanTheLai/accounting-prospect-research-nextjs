@@ -69,7 +69,7 @@ test("malformed workbooks are rejected before writes", async () => {
   }
 });
 
-test("XLSX import is add-only and skips existing and duplicate companies", async () => {
+test("XLSX import updates existing companies and skips in-file duplicates", async () => {
   const db = createFixture();
   try {
     db.prepare(`INSERT INTO prospects (lead_id, company_name, contact_email, status, notes, campaign_id)
@@ -77,17 +77,16 @@ test("XLSX import is add-only and skips existing and duplicate companies", async
     const preview = await previewXlsxImport(db, workbookFixture, "yc_us_expansion");
     assert.equal(preview.readyRows, 1);
     assert.equal(preview.existingRows, 1);
+    assert.equal(preview.updatedRows, 1);
     assert.equal(preview.duplicateRows, 1);
 
     const result = await importXlsxRows(db, workbookFixture, "yc_us_expansion");
     assert.equal(result.added, 1);
-    assert.equal(result.skipped, 2);
+    assert.equal(result.updated, 1);
+    assert.equal(result.skipped, 1);
     const existing = db.prepare("SELECT contact_email, status, notes FROM prospects WHERE lead_id = ?").get("manual_1");
-    assert.deepEqual(existing, {
-      contact_email: "reviewed@example.test",
-      status: "Approved for Outreach",
-      notes: "Keep this",
-    });
+    assert.equal(existing.status, "Approved for Outreach");
+    assert.match(existing.notes, /^Keep this/);
     const imported = db.prepare("SELECT * FROM prospects WHERE company_name = ?").get("Acme Ledger");
     assert.equal(imported.status, "Ready to Review");
     assert.equal(imported.contact_email, "");
