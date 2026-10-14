@@ -41,12 +41,12 @@ class TestCampaignDatabase(unittest.TestCase):
         self.assertTrue(target["manual_limits"])
         self.assertEqual(target["status"], "ACTIVE")
 
-    def test_new_mailbox_defaults_support_fifty_per_day(self):
+    def test_new_mailbox_defaults_support_one_hundred_per_day(self):
         email = "default.limits@openclose-desk.com"
         mailbox_id = db.upsert_mailbox(email=email, smtp_user=email, smtp_password="fixture")
         try:
             target = next(box for box in db.get_all_mailboxes() if box["email"] == email)
-            self.assertEqual((target["daily_limit"], target["hourly_limit"]), (50, 10))
+            self.assertEqual((target["daily_limit"], target["hourly_limit"]), (100, 30))
             self.assertTrue(target["manual_limits"])
         finally:
             db.delete_mailbox(mailbox_id)

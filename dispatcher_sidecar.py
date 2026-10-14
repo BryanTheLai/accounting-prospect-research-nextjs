@@ -247,8 +247,8 @@ def _safe_mailbox_pacing() -> dict[str, Any]:
     return {
         "mailboxes": safe_mailbox_pacing_summary(
             mailboxes,
-            int(snapshot.get("min_delay", 90)),
-            int(snapshot.get("max_delay", 210)),
+            int(snapshot.get("min_delay", 60)),
+            int(snapshot.get("max_delay", 120)),
         ),
         "limits": {
             "maxDaily": 9_007_199_254_740_991,

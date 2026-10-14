@@ -335,8 +335,8 @@ def upsert_mailbox(
     sender_name: str = "Bryan @ Outbounder",
     smtp_server: str = "smtp.office365.com",
     smtp_port: int = 587,
-    daily_limit: int = 50,
-    hourly_limit: int = 10,
+    daily_limit: int = 100,
+    hourly_limit: int = 30,
     manual_limits: bool = True,
     status: str = "ACTIVE",
     provider_type: Optional[str] = None

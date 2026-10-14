@@ -103,11 +103,11 @@ def recover_run(*, include_paused=False):
         """, (run_id, run["live"])).fetchone()
         if last_send:
             mailbox = connection.execute("SELECT * FROM mailboxes WHERE lower(email)=?", ((last_send["sender_email"] or "").lower(),)).fetchone()
-            minimum = max(60, settings.get("min_delay", 90))
+            minimum = max(60, settings.get("min_delay", 60))
             if mailbox:
                 from warmup_ramper import enforce_warmup_limits
                 minimum = enforce_warmup_limits(dict(mailbox), default_min_delay=minimum,
-                                                default_max_delay=settings.get("max_delay", 210))["effective_min_delay_seconds"]
+                                                default_max_delay=settings.get("max_delay", 120))["effective_min_delay_seconds"]
             spacing = datetime.fromisoformat(last_send["sent_at"]).timestamp() + minimum
             if spacing > next_send_at:
                 next_send_at, wait_reason = spacing, "spacing"

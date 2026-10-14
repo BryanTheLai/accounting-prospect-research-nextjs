@@ -40,7 +40,7 @@ type MailboxForm = {
 
 const EMPTY_FORM: MailboxForm = {
   email: "", senderName: "Bryan @ Outbounder", smtpServer: "smtp.office365.com", smtpPort: "587",
-  smtpUser: "", smtpPassword: "", dailyLimit: "50", hourlyLimit: "10", providerType: "MICROSOFT",
+  smtpUser: "", smtpPassword: "", dailyLimit: "100", hourlyLimit: "30", providerType: "MICROSOFT",
   manualLimits: true,
 };
 
