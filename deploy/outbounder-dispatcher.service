@@ -1,0 +1,25 @@
+[Unit]
+Description=Outbounder dispatcher (campaign send worker)
+After=network.target
+
+[Service]
+Type=simple
+User=outbounder
+Group=outbounder
+WorkingDirectory=/opt/outbounder
+EnvironmentFile=/opt/outbounder/.env
+ExecStart=/opt/outbounder/venv/bin/python /opt/outbounder/dispatcher_sidecar.py
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=60
+# Sending keeps its own timing; give it room to finish an in-flight message.
+TimeoutStartSec=30
+ReadWritePaths=/var/lib/outbounder
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

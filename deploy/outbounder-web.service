@@ -1,0 +1,27 @@
+[Unit]
+Description=Outbounder web (Next.js)
+After=network.target outbounder-dispatcher.service
+
+[Service]
+Type=simple
+User=outbounder
+Group=outbounder
+WorkingDirectory=/opt/outbounder/web
+EnvironmentFile=/opt/outbounder/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=30
+# The app reads the SQLite file in /var/lib/outbounder
+ReadWritePaths=/var/lib/outbounder
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
