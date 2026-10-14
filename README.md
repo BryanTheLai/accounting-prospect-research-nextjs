@@ -2,11 +2,12 @@
 
 Cold-outreach platform for accounting services. Ingests prospects, verifies email
 deliverability, and sends reviewed, rate-limited email campaigns from a local or
-hosted sender. A companion call desk handles phone follow-up.
+hosted sender.
 
 > **Branches**
 > - `main` — email-only. Campaigns, deliverability, and sending. No call desk.
-> - `codex-v1` — full version. Everything in `main` **plus** the call desk / dialer.
+> - `codex-v1` — full version. Everything in `main` **plus** a call desk for scripted
+>   phone follow-up (the "Call desk" feature section below applies to this branch only).
 >
 > Both branches share the same SQLite database (configured via `OUTBOUNDER_DB_PATH`).
 
