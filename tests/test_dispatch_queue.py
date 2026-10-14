@@ -202,7 +202,7 @@ with patch("campaign_dispatcher.is_live_outreach_ready",return_value=True), patc
             return json.loads(child.stdout)
         self.assertEqual(recover()["wait_reason"], "daily_quota")
         with db.get_db_connection() as connection:
-            connection.execute("UPDATE mailboxes SET daily_limit=50,hourly_limit=10")
+            connection.execute("UPDATE mailboxes SET daily_limit=100,hourly_limit=30")
         recovered = recover()
         self.assertLess(recovered["next_send_at"], now.timestamp()+30)
         self.assertEqual(recovered["run_id"], "run")
