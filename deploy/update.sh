@@ -17,12 +17,17 @@ trap 'rm -rf "$TMP"' EXIT
 echo "==> branch: $BRANCH"
 
 echo "==> verifying the tree is committed"
-if [ -n "$(git -C "$REPO" status --porcelain)" ]; then
-  echo "    uncommitted changes found:"
-  git -C "$REPO" status --short
+# Ignore line-ending-only differences: they are not real edits and must not
+# block a deploy. Only substantive changes are reported and block the update.
+PENDING="$(git -C "$REPO" diff --numstat --ignore-all-space \
+            | grep -vE '^[0-9]+\s+0\s+|^-\s+-\s+' || true)"
+if [ -n "$PENDING" ]; then
+  echo "    real uncommitted changes found:"
+  echo "$PENDING" | head -20
   echo "    commit them first, or re-run after committing."
   exit 1
 fi
+echo "    clean (ignoring line-ending differences)"
 
 echo "==> creating archive"
 git -C "$REPO" archive --format=tar -o "$TMP/src.tar" HEAD

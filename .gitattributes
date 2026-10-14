@@ -1,0 +1,22 @@
+# Normalize line endings in the repository itself so git status stays stable
+# regardless of each machine's core.autocrlf setting.
+#
+# Text files are stored with LF in the repository and checked out per platform.
+* text=auto eol=lf
+
+# Shell scripts must always be LF or they fail on Linux.
+*.sh text eol=lf
+
+# Binary / non-text files must never be touched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.sqlite binary
+*.db binary
+*.zip binary
+*.gz binary
