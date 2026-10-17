@@ -94,3 +94,6 @@ operations/runtime/
 logs/
 *.out
 *.err
+
+# Local send env (control token + DB path) - machine specific, never commit
+.local-send.env

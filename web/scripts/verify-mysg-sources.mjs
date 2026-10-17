@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Confirm MY/SG lead addresses by re-fetching each company's official site and
  * checking the exact address string is published there.
  *
@@ -23,6 +23,10 @@ const DB = process.env.OUTBOUNDER_DB_PATH || "/var/lib/outbounder/leads.sqlite";
 const CONCURRENCY = 5;
 const FETCH_TIMEOUT_MS = 12000;
 const PATHS = ["/", "/contact", "/contact-us", "/about", "/about-us"];
+// How long an unconfirmed address keeps being retried before we stop spending
+// fetch time on it. Companies add contact pages occasionally, but waiting
+// months for one is not worth blocking the daily pipeline.
+const RETRY_WINDOW_DAYS = Number(process.env.VERIFY_RETRY_DAYS || 7);
 const POOLS = [
   "hydroball_clones",
   "jobstreet_hiring_pain",
@@ -133,12 +137,34 @@ const rows = db
         AND e.source_confirmed = 0
         AND trim(coalesce(p.contact_email,'')) <> ''
         AND instr(p.contact_email,'@') > 1
+        -- Retry budget. Without this, every address we fail to find is
+        -- re-fetched on every scheduled cycle forever, which is slow enough to
+        -- get the supervisor killed mid-run. Most of these companies simply do
+        -- not publish the address on any page we visit, so retrying rarely
+        -- helps; we give each a few chances across RETRY_WINDOW_DAYS and then
+        -- stop paying for them.
+        AND (
+          e.source_confirmed_at IS NULL
+          OR julianday('now') - julianday(e.source_confirmed_at) <= ${RETRY_WINDOW_DAYS}
+        )
       ORDER BY p.lead_id`,
   )
   .all(...POOLS);
 
 console.log(`MY/SG leads to verify: ${rows.length}`);
 if (rows.length === 0) process.exit(0);
+
+/**
+ * Record that we tried this address and did not confirm it, so the retry window
+ * counts down. Deliberately does NOT set source_confirmed: a failed lookup must
+ * never look like a confirmation to any downstream gate.
+ */
+const markAttempted = db.prepare(
+  "UPDATE email_preflight SET source_confirmed_at = ? WHERE lead_id = ? AND source_confirmed = 0",
+);
+const markAttemptedAt = (leadId) => {
+  markAttempted.run(attemptedAt, leadId);
+};
 
 const results = [];
 let cursor = 0;
@@ -161,6 +187,7 @@ await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 let confirmed = 0;
 let blocked = 0;
 let skipped = 0;
+const attemptedAt = new Date().toISOString();
 for (const r of results) {
   if (r.ok) {
     const sent = confirmEmailSource(db, {
@@ -176,9 +203,13 @@ for (const r of results) {
   } else if (r.why === "compliance_or_hr_inbox") {
     blocked++;
     console.log(`  BLOCK ${r.domain}  ${r.address}  ${r.why}`);
+    markAttemptedAt(r.lead_id);
   } else {
     skipped++;
     console.log(`  SKIP  ${r.domain}  ${r.address}  ${r.why}`);
+    // Stamp the attempt so the retry window counts down from now rather than
+    // from whenever this lead was first staged.
+    markAttemptedAt(r.lead_id);
   }
 }
 
