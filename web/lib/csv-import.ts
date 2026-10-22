@@ -63,6 +63,31 @@ const IMPORT_FIELDS: ImportField[] = [
   "buyer_name", "buyer_title", "contact_email", "contact_phone", "proof_link", "notes",
 ];
 
+const IMPORT_NOTE = "Imported from spreadsheet; requires review.";
+const UPDATE_NOTE = "Updated from spreadsheet import; requires review.";
+
+// Mapped spreadsheet columns that may overwrite an existing prospect's values.
+// status, lead_id, quality_score and tier are deliberately absent: importing a
+// spreadsheet never rewrites pipeline stage, identity, score, or tier.
+const OVERWRITABLE_COLUMNS: Array<[string, ImportField]> = [
+  ["company_name", "company_name"],
+  ["company_summary", "company_summary"],
+  ["root_domain", "root_domain"],
+  ["headquarters", "headquarters"],
+  ["sector", "sector"],
+  ["buyer_name", "buyer_name"],
+  ["buyer_title", "buyer_title"],
+  ["contact_email", "contact_email"],
+  ["contact_phone", "contact_phone"],
+  ["proof_link", "proof_link"],
+];
+
+function appendImportNote(notes: string, note: string) {
+  const existing = notes.trim();
+  if (!existing) return note;
+  return existing.endsWith(note) ? existing : `${existing}\n${note}`;
+}
+
 type ImportDocument = { headers: string[]; records: string[][] };
 type ColumnMapping = Partial<Record<ImportField, string>>;
 type AnalyzedRow = { record: ImportRecord; values: Record<ImportField, string> };
@@ -242,18 +267,17 @@ function analyzeDocument(db: Database.Database, document: ImportDocument, campai
   }
 
   const { mapping, ignoredHeaders } = mapColumns(document.headers);
-  const existingRows = db.prepare<[], { company_name: string; lead_id: string }>(
+  // Normalized company name -> real lead_id. One lookup backs both the preview
+  // state and the UPDATE that importDocumentRows later runs, so preview and
+  // apply can never disagree about which row an import row refers to.
+  const existingRecords = new Map<string, string>();
+  for (const row of db.prepare<[], { company_name: string; lead_id: string }>(
     "SELECT company_name, lead_id FROM prospects",
-  ).all();
-  const existingNames = new Set(
-    existingRows.map((row) => normalizeCompanyName(row.company_name || "")).filter(Boolean),
-  );
-  // Map normalized company name -> real lead_id so preview and apply agree on
-  // exactly which row an update targets.
-  const existingIds = new Map(
-    existingRows.map((row) => [normalizeCompanyName(row.company_name || ""), row.lead_id]),
-  );
-  const existingLeadIds = new Map<string, string>();
+  ).all()) {
+    const key = normalizeCompanyName(row.company_name || "");
+    if (key && !existingRecords.has(key)) existingRecords.set(key, row.lead_id);
+  }
+  const existingNames = new Set(existingRecords.keys());
   const seenNames = new Set<string>();
   const analyzedRows: AnalyzedRow[] = document.records.map((importRow, index) => {
     const record = emptyImportRecord(index + 2);
@@ -294,7 +318,6 @@ function analyzeDocument(db: Database.Database, document: ImportDocument, campai
       } else if (existingNames.has(key)) {
         record.state = "existing";
         record.reason = "Company already exists; the existing record will be updated with the mapped columns.";
-        existingLeadIds.set(key, existingIds.get(key) || "");
         seenNames.add(key);
       } else {
         seenNames.add(key);
@@ -315,7 +338,7 @@ function analyzeDocument(db: Database.Database, document: ImportDocument, campai
     invalidRows: analyzedRows.filter((row) => row.record.state === "invalid").length,
     previewRows: analyzedRows.slice(0, MAX_PREVIEW_ROWS).map((row) => row.record),
   };
-  return { summary, rows: analyzedRows, existingLeadIds };
+  return { summary, rows: analyzedRows, existingRecords };
 }
 
 export function listImportCampaigns(db: Database.Database) {
@@ -343,7 +366,7 @@ function importDocumentRows(db: Database.Database, document: ImportDocument, cam
     throw new ImportInputError("Choose an existing campaign before importing the file.");
   }
   const insertRows = db.transaction(() => {
-    const { summary, rows, existingLeadIds } = analyzeDocument(db, document, campaignId.trim());
+    const { summary, rows, existingRecords } = analyzeDocument(db, document, campaignId.trim());
     const prospectColumns = readProspectColumnNames(db);
     const fields = [
       "lead_id", "company_name", "company_summary", "root_domain", "headquarters", "sector",
@@ -360,41 +383,63 @@ function importDocumentRows(db: Database.Database, document: ImportDocument, cam
     let updated = 0;
     let skipped = summary.invalidRows + summary.duplicateRows;
 
-    // Columns an existing row may receive from the file. Identity, pipeline
-    // stage and scoring are deliberately excluded so a re-import can never
-    // reset someone's status or duplicate their lead_id.
-    const updatableFields = [
-      "company_summary", "root_domain", "headquarters", "sector",
-      "buyer_name", "buyer_title", "contact_email", "contact_phone",
-      "proof_link", "notes", "campaign_id",
-    ].filter((field) => prospectColumns.has(field));
+    // Columns an existing row may receive from the file. lead_id, status,
+    // quality_score, tier and campaign_id are deliberately excluded: importing a
+    // spreadsheet must never re-identify a lead, move it to another pipeline
+    // stage or campaign, or rewrite its score and tier.
+    const updatableFields = OVERWRITABLE_COLUMNS
+      .filter(([column]) => prospectColumns.has(column));
+    const readNotes = prospectColumns.has("notes")
+      ? db.prepare<[string], { notes: string | null }>("SELECT notes FROM prospects WHERE lead_id = ?")
+      : null;
+    const notesByLead = new Map<string, string>();
+    const storedNotes = (leadId: string) => {
+      if (!readNotes) return "";
+      const cached = notesByLead.get(leadId);
+      if (cached !== undefined) return cached;
+      const value = readNotes.get(leadId)?.notes ?? "";
+      notesByLead.set(leadId, value);
+      return value;
+    };
+    const updateStatements = new Map<string, Database.Statement>();
+    const updateFor = (assignments: string[]) => {
+      const key = assignments.join(",");
+      const cached = updateStatements.get(key);
+      if (cached) return cached;
+      const statement = db.prepare(
+        `UPDATE prospects SET ${key} WHERE "lead_id" = ?`,
+      );
+      updateStatements.set(key, statement);
+      return statement;
+    };
 
     for (const { record, values } of rows) {
       if (record.state === "existing") {
-        const leadId = existingLeadIds.get(normalizeCompanyName(record.company));
-        if (!leadId) { skipped += 1; continue; }
+        const leadId = existingRecords.get(normalizeCompanyName(record.company));
+        if (!leadId) {
+          skipped += 1;
+          continue;
+        }
         const assignments: string[] = [];
         const bound: Array<string | number> = [];
-        for (const field of updatableFields) {
-          if (field === "notes") continue; // handled separately below
-          const value = values[field as ImportField];
-          if (typeof value !== "string" || value.trim() === "") continue;
-          assignments.push(`"${field}" = ?`);
-          bound.push(value.trim());
+        for (const [column, field] of updatableFields) {
+          // An empty cell in the file leaves the stored value alone; an import
+          // never blanks out a column the upload did not actually supply.
+          const value = values[field].trim();
+          if (!value) continue;
+          assignments.push(`"${column}" = ?`);
+          bound.push(value);
         }
-        if (updatableFields.includes("notes") && values.notes.trim() !== "") {
-          assignments.push(`"notes" = TRIM(COALESCE("notes", '') || char(10) || ?)`);
-          bound.push(`Imported from spreadsheet on ${new Date().toISOString().slice(0, 10)}.`);
+        if (prospectColumns.has("notes")) {
+          const base = values.notes.trim() || storedNotes(leadId);
+          assignments.push(`"notes" = ?`);
+          bound.push(appendImportNote(base, UPDATE_NOTE));
         }
         if (assignments.length) {
-          const result = db.prepare(
-            `UPDATE prospects SET ${assignments.join(", ")} WHERE lead_id = ?`,
-          ).run(...bound, leadId);
-          if (result.changes) updated += 1;
-          else skipped += 1;
-        } else {
-          // Nothing in the file to apply; the row still matched, so count it.
+          updateFor(assignments).run(...bound, leadId);
           updated += 1;
+        } else {
+          skipped += 1;
         }
         continue;
       }
@@ -413,7 +458,7 @@ function importDocumentRows(db: Database.Database, document: ImportDocument, cam
         quality_score: 0,
         tier: "Unreviewed spreadsheet",
         status: "Ready to Review",
-        notes: values.notes || "Imported from spreadsheet; requires review.",
+        notes: values.notes || IMPORT_NOTE,
         proof_link: values.proof_link,
         campaign_id: campaignId.trim(),
       };

@@ -22,7 +22,7 @@ async function check(name, fn) {
   catch (error) { checks.push({ name, status: "failed", error: error.message }); await page.screenshot({ path: `${output}/secondary-failure-${checks.length}.png` }); throw error; }
 }
 try {
-  await check("Import: real CSV upload/parse, ready/duplicate/invalid/existing rows, confirmation/Escape, fixture insert, add-only preservation, real XLSX parse", async () => {
+  await check("Import: real CSV upload/parse, ready/duplicate/invalid/existing rows, confirmation/Escape, fixture upsert, in-place update, real XLSX parse", async () => {
     await go("/import");
     const select = page.locator("main select").first(); await select.locator("option").nth(1).waitFor({ state: "attached" });
     await select.selectOption("hydroball_clones");
@@ -31,20 +31,30 @@ try {
     const previewResponse = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/import" && r.request().method() === "POST");
     await page.getByRole("button", { name: "Preview import", exact: true }).click();
     const preview = await (await previewResponse).json();
-    assert.deepEqual([preview.readyRows, preview.duplicateRows, preview.invalidRows, preview.existingRows], [1,1,1,1]);
-    await open("Other rows: 3"); await open("Import rules");
+    assert.deepEqual([preview.readyRows, preview.updatedRows, preview.duplicateRows, preview.invalidRows, preview.existingRows], [1,1,1,1,1]);
+    await open("Other rows: 2"); await open("Import rules");
     assert.equal(await page.locator("main table tbody tr").count(), 4);
-    await page.getByRole("button", { name: "Confirm 1 new prospects", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm 1 new and 1 updated", exact: true }).click();
     await page.getByRole("alertdialog").waitFor(); await page.keyboard.press("Escape");
     assert.equal(await page.getByRole("alertdialog").count(), 0);
-    await page.getByRole("button", { name: "Confirm 1 new prospects", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm 1 new and 1 updated", exact: true }).click();
     const insertResponse = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/import" && r.request().method() === "POST");
-    await page.getByRole("button", { name: "Confirm insert", exact: true }).click();
-    const inserted = await (await insertResponse).json(); assert.equal(inserted.added, 1); assert.equal(inserted.skipped, 3);
+    await page.getByRole("button", { name: "Confirm import", exact: true }).click();
+    const inserted = await (await insertResponse).json(); assert.equal(inserted.added, 1); assert.equal(inserted.updated, 1); assert.equal(inserted.skipped, 2);
     const imported = db.prepare("SELECT * FROM prospects WHERE company_name='QC Import Component LLC'").get();
     assert.equal(imported.status, "Ready to Review"); assert.equal(imported.contact_email, "qc.import@example.test");
     assert.ok(!imported.contact_phone && !imported.buyer_name);
-    assert.deepEqual(db.prepare("SELECT * FROM prospects WHERE lead_id='OC-JOB-001'").get(), original);
+    // An existing company is updated in place: the mapped email is overwritten
+    // while identity, scoring and tier stay put, and the row is not duplicated.
+    const updated = db.prepare("SELECT * FROM prospects WHERE lead_id='OC-JOB-001'").get();
+    assert.equal(updated.contact_email, "never-overwrite@example.test");
+    assert.equal(updated.lead_id, original.lead_id);
+    assert.equal(updated.status, original.status);
+    assert.equal(updated.quality_score, original.quality_score);
+    assert.equal(updated.tier, original.tier);
+    assert.equal(updated.campaign_id, original.campaign_id);
+    assert.match(updated.notes, /Updated from spreadsheet import/);
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM prospects WHERE lower(company_name)=lower('Advancelab Sdn. Bhd.')").get().count, 1);
     const workbook = await readFile(new URL("./fixtures/prospects-import.xlsx", import.meta.url));
     await page.locator('input[type="file"]').setInputFiles({ name: "qc-workbook.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: workbook });
     const workbookResponse = page.waitForResponse((r) => new URL(r.url()).pathname === "/api/import" && r.request().method() === "POST");

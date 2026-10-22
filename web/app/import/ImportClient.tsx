@@ -42,6 +42,13 @@ const STATE_STYLES: Record<PreviewRow["state"], string> = {
   invalid: styles.invalid,
 };
 
+const STATE_LABELS: Record<PreviewRow["state"], string> = {
+  ready: "Ready to add",
+  existing: "Will update",
+  duplicate: "Duplicate",
+  invalid: "Invalid",
+};
+
 const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -209,8 +216,25 @@ export default function ImportClient() {
     }
   }
 
+  function confirmLabel(next: Preview) {
+    const parts: string[] = [];
+    if (next.readyRows > 0) parts.push(`${next.readyRows} new`);
+    if (next.updatedRows > 0) parts.push(`${next.updatedRows} updated`);
+    return parts.length ? parts.join(" and ") : "nothing";
+  }
+
+  function dialogTitle(next: Preview) {
+    if (next.readyRows > 0 && next.updatedRows > 0) {
+      return `Add ${next.readyRows} and update ${next.updatedRows}?`;
+    }
+    if (next.updatedRows > 0) {
+      return `Update ${next.updatedRows} existing ${next.updatedRows === 1 ? "record" : "records"}?`;
+    }
+    return `Insert ${next.readyRows} ${next.readyRows === 1 ? "record" : "records"}?`;
+  }
+
   async function confirmImport() {
-    if (!preview || preview.readyRows === 0 || !campaignId || importing) return;
+    if (!preview || (preview.readyRows === 0 && preview.updatedRows === 0) || !campaignId || importing) return;
     setImporting(true);
     setError("");
     try {
@@ -282,8 +306,8 @@ export default function ImportClient() {
         </div>
         <div className={styles.counts} style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
           <div><strong>{preview.readyRows}</strong><span>will be added</span></div><div><strong>{preview.updatedRows}</strong><span>will be updated</span></div>
-          <div><details><summary>Other rows: {preview.existingRows + preview.duplicateRows + preview.invalidRows}</summary>
-            <span>{preview.updatedRows} will be updated · {preview.duplicateRows} repeated in file · {preview.invalidRows} invalid</span>
+          <div><details><summary>Other rows: {preview.duplicateRows + preview.invalidRows}</summary>
+            <span>{preview.duplicateRows} repeated in file · {preview.invalidRows} invalid</span>
           </details></div>
         </div>
         <div className={styles.mappings}>
@@ -300,25 +324,25 @@ export default function ImportClient() {
             <thead><tr><th>File row</th><th>Company</th><th>Email from file</th><th>Contact name</th><th>Phone from file</th><th>Import state</th></tr></thead>
             <tbody>{preview.previewRows.map((row) => <tr key={row.rowNumber}>
               <td data-label="Row">{row.rowNumber}</td><td data-label="Company" className={styles.companyCell}>{row.company || "—"}</td><td data-label="Email">{row.email || "—"}</td><td data-label="Contact">{row.buyerName || "—"}</td><td data-label="Phone">{row.phone || "—"}</td>
-              <td data-label="Status"><span className={`${styles.state} ${STATE_STYLES[row.state]}`}>{row.state === "ready" ? "Ready to add" : row.state}</span>{row.reason && <small className={styles.reason}>{row.reason}</small>}</td>
+              <td data-label="Status"><span className={`${styles.state} ${STATE_STYLES[row.state]}`}>{STATE_LABELS[row.state]}</span>{row.reason && <small className={styles.reason}>{row.reason}</small>}</td>
             </tr>)}</tbody>
           </table>
         </div>
         {preview.totalRows > preview.previewRows.length && <p className={styles.previewLimit}>Showing the first {preview.previewRows.length} of {preview.totalRows.toLocaleString()} rows. Counts above cover the full file.</p>}
         <div className={styles.confirmBar}>
           <span>Import rechecks for existing companies inside one database transaction. Existing records are updated in place, without touching their pipeline stage or identity.</span>
-          <button type="button" className={styles.primaryButton} onClick={() => setConfirming(true)} disabled={preview.readyRows === 0 || sourceBusy}>Confirm {preview.readyRows} new prospects</button>
+          <button type="button" className={styles.primaryButton} onClick={() => setConfirming(true)} disabled={(preview.readyRows === 0 && preview.updatedRows === 0) || sourceBusy}>Confirm {confirmLabel(preview)}</button>
         </div>
       </section>}
 
       {confirming && preview && <div className={styles.modalBackdrop} role="presentation">
         <section className={styles.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-description">
           <span className={styles.eyebrow}>Final check</span>
-          <h2 id="confirm-title">Insert {preview.readyRows} prospects?</h2>
+          <h2 id="confirm-title">{dialogTitle(preview)}</h2>
           <p id="confirm-description">This adds new company records and updates existing ones in {preview.campaign.name}. New rows will be Ready to Review. Existing rows keep their stage and identity, and empty file cells do not erase stored values. Contact values come only from mapped file columns; no email is generated, checked, or sent.</p>
           <div className={styles.dialogActions}>
             <button type="button" onClick={() => setConfirming(false)} disabled={importing}>Go back</button>
-            <button type="button" className={styles.primaryButton} onClick={() => void confirmImport()} disabled={importing}>{importing ? "Importing…" : "Confirm insert"}</button>
+            <button type="button" className={styles.primaryButton} onClick={() => void confirmImport()} disabled={importing}>{importing ? "Importing…" : "Confirm import"}</button>
           </div>
         </section>
       </div>}

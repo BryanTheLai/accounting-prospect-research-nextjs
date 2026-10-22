@@ -106,31 +106,52 @@ test("explicit contact columns are imported literally but remain in review", () 
 test("existing companies are updated in place; repeated CSV rows are skipped", () => {
   const db = createFixture();
   try {
-    db.prepare(`INSERT INTO prospects (lead_id, company_name, contact_email, status, notes, campaign_id)
-      VALUES (?, ?, ?, ?, ?, ?)`).run("manual_1", "Existing Co", "reviewed@example.test", "Approved for Outreach", "User notes", "other_campaign");
+    db.prepare(`INSERT INTO prospects (lead_id, company_name, contact_email, contact_phone, buyer_name,
+        quality_score, tier, status, notes, campaign_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      "manual_1", "Existing Co", "reviewed@example.test", "+1 415 555 0199", "Stored Buyer",
+      42, "Tier A", "Approved for Outreach", "User notes", "other_campaign");
+    // The Existing Co row supplies an email but leaves phone and description
+    // blank, so those two cells must not wipe what the database already holds.
     const csv = [
-      "company,email",
-      "Existing Co,changed@example.test",
-      "New Co,",
-      " new   co,duplicate@example.test",
+      "company,email,phone_number,description",
+      "Existing Co,changed@example.test,,",
+      "New Co,,",
+      " new   co,duplicate@example.test,,",
     ].join("\n");
     const preview = previewCsvImport(db, csv, "yc_us_expansion");
     assert.equal(preview.readyRows, 1);
     assert.equal(preview.existingRows, 1);
     assert.equal(preview.updatedRows, 1);
     assert.equal(preview.duplicateRows, 1);
+    assert.match(preview.previewRows[0].reason, /will be updated/);
+
     const result = importCsvRows(db, csv, "yc_us_expansion");
     assert.equal(result.added, 1);
     assert.equal(result.updated, 1);
     assert.equal(result.skipped, 1);
-    // The mapped email is overwritten, but identity, pipeline stage and any
-    // column the file left blank are preserved.
-    const existing = db.prepare("SELECT contact_email, status, notes, campaign_id FROM prospects WHERE lead_id = ?").get("manual_1");
+
+    const existing = db.prepare("SELECT * FROM prospects WHERE lead_id = ?").get("manual_1");
     assert.equal(existing.contact_email, "changed@example.test");
+    // Blank file cells leave the stored value untouched.
+    assert.equal(existing.contact_phone, "+1 415 555 0199");
+    assert.equal(existing.company_summary, null);
+    // Identity, pipeline stage, scoring and campaign are never rewritten.
+    assert.equal(existing.lead_id, "manual_1");
     assert.equal(existing.status, "Approved for Outreach");
-    assert.match(existing.notes, /^User notes/);
+    assert.equal(existing.quality_score, 42);
+    assert.equal(existing.tier, "Tier A");
     assert.equal(existing.campaign_id, "other_campaign");
+    assert.equal(existing.buyer_name, "Stored Buyer");
+    // The update is traceable in the notes column.
+    assert.match(existing.notes, /^User notes/);
+    assert.match(existing.notes, /Updated from spreadsheet import/);
+    // Nothing is deleted: the new company is appended alongside the old one.
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM prospects").get().count, 2);
     assert.equal(db.prepare("SELECT COUNT(*) AS count FROM prospects WHERE lower(company_name) = 'new co'").get().count, 1);
+    // First-row-wins: the repeated " new   co" row never reached the database,
+    // so the appended company kept the blank email the first row supplied.
+    assert.equal(db.prepare("SELECT contact_email FROM prospects WHERE lower(company_name) = 'new co'").get().contact_email, "");
   } finally {
     db.close();
   }

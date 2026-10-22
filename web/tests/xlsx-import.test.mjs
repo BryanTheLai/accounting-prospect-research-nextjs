@@ -72,8 +72,11 @@ test("malformed workbooks are rejected before writes", async () => {
 test("XLSX import updates existing companies and skips in-file duplicates", async () => {
   const db = createFixture();
   try {
-    db.prepare(`INSERT INTO prospects (lead_id, company_name, contact_email, status, notes, campaign_id)
-      VALUES (?, ?, ?, ?, ?, ?)`).run("manual_1", "Existing Co", "reviewed@example.test", "Approved for Outreach", "Keep this", "yc_us_expansion");
+    db.prepare(`INSERT INTO prospects (lead_id, company_name, contact_email, contact_phone, buyer_name,
+        quality_score, tier, status, notes, campaign_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      "manual_1", "Existing Co", "reviewed@example.test", "+1 415 555 0199", "Stored Buyer",
+      42, "Tier A", "Approved for Outreach", "Keep this", "yc_us_expansion");
     const preview = await previewXlsxImport(db, workbookFixture, "yc_us_expansion");
     assert.equal(preview.readyRows, 1);
     assert.equal(preview.existingRows, 1);
@@ -84,15 +87,32 @@ test("XLSX import updates existing companies and skips in-file duplicates", asyn
     assert.equal(result.added, 1);
     assert.equal(result.updated, 1);
     assert.equal(result.skipped, 1);
-    const existing = db.prepare("SELECT contact_email, status, notes FROM prospects WHERE lead_id = ?").get("manual_1");
+
+    // Every mapped column the workbook supplies is written to the real lead_id.
+    const existing = db.prepare("SELECT * FROM prospects WHERE lead_id = ?").get("manual_1");
+    assert.equal(existing.lead_id, "manual_1");
+    assert.equal(existing.contact_email, "changed@example.test");
+    assert.equal(existing.root_domain, "existing.example");
+    assert.equal(existing.buyer_name, "Different Person");
+    assert.equal(existing.company_summary, "Updated summary");
+    // contact_phone is not in the workbook, so the stored value survives.
+    assert.equal(existing.contact_phone, "+1 415 555 0199");
+    // Pipeline stage, scoring and identity are never rewritten by an import.
     assert.equal(existing.status, "Approved for Outreach");
+    assert.equal(existing.quality_score, 42);
+    assert.equal(existing.tier, "Tier A");
     assert.match(existing.notes, /^Keep this/);
+    assert.match(existing.notes, /Updated from spreadsheet import/);
+
+    // The new company is appended, and the repeated " acme   ledger " row never
+    // clobbers the first Acme Ledger row: first-row-wins.
     const imported = db.prepare("SELECT * FROM prospects WHERE company_name = ?").get("Acme Ledger");
     assert.equal(imported.status, "Ready to Review");
     assert.equal(imported.contact_email, "");
     assert.equal(imported.buyer_name, "Casey Lai");
     assert.equal(imported.root_domain, "acme.example");
     assert.equal(imported.campaign_id, "yc_us_expansion");
+    assert.equal(db.prepare("SELECT COUNT(*) AS count FROM prospects").get().count, 2);
   } finally {
     db.close();
   }
